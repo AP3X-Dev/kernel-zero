@@ -1,17 +1,8 @@
 import "server-only";
 
 import type { Prisma } from "@prisma/client";
-import { z } from "zod";
 
-import {
-  DigestSchema,
-  EvidenceEnvelopeSchema,
-  EvidenceFindingSchema,
-  EvidenceResultSchema,
-  EvidenceSignatureSchema,
-  InstantSchema,
-  UuidV7Schema,
-} from "@kernel-zero/contracts";
+import { StoredEvidenceSchema, type StoredEvidence } from "@kernel-zero/contracts";
 import {
   PLAN_CATALOGUE,
   generateUuidV7,
@@ -25,24 +16,7 @@ import {
 import { createAuditRepository } from "./audit";
 import type { PersistenceClient, TransactionClient } from "./client";
 
-/** The kernel-generic evidence shape persistence stores; profile-specific rules stay in the profile. */
-export const StoredEvidenceSchema = EvidenceEnvelopeSchema.extend({
-  exceptionBundleDigest: DigestSchema.nullable(),
-  findings: z.array(EvidenceFindingSchema).max(5_000),
-  generatedAt: InstantSchema,
-  integrity: z.strictObject({ algorithm: z.literal("sha256"), digest: DigestSchema }),
-  result: EvidenceResultSchema,
-  runId: UuidV7Schema,
-  signature: EvidenceSignatureSchema.nullable(),
-  subject: z.strictObject({
-    manifestDigest: DigestSchema,
-    repository: z.string().min(1).max(200),
-    revision: z.string().min(1).max(200),
-  }),
-  tool: z.strictObject({ name: z.string().min(1).max(80), version: z.string().min(1).max(80) }),
-});
-
-export type StoredEvidence = z.infer<typeof StoredEvidenceSchema>;
+export { StoredEvidenceSchema, type StoredEvidence };
 
 export type EvidenceAttestationState = "attested" | "recorded";
 export type EvidenceResultStatus = "error" | "fail" | "pass";

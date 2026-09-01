@@ -1,7 +1,12 @@
 import { z } from "zod";
 
-import type { EvidenceFinding } from "./evidence";
-import { DigestSchema, SlugSchema, UuidV7Schema } from "./shared";
+import {
+  EvidenceFindingSchema,
+  EvidenceResultSchema,
+  EvidenceSignatureSchema,
+  type EvidenceFinding,
+} from "./evidence";
+import { DigestSchema, InstantSchema, SlugSchema, UuidV7Schema } from "./shared";
 
 export const PolicyEnvelopeSchema = z.looseObject({
   apiVersion: z.literal("kernel-zero.dev/v1"),
@@ -24,6 +29,25 @@ export const EvidenceEnvelopeSchema = z.looseObject({
 
 export type EvidenceEnvelope = z.infer<typeof EvidenceEnvelopeSchema>;
 
+/** The kernel-generic evidence shape the control plane stores; profile-specific rules stay in the profile. */
+export const StoredEvidenceSchema = EvidenceEnvelopeSchema.extend({
+  exceptionBundleDigest: DigestSchema.nullable(),
+  findings: z.array(EvidenceFindingSchema).max(5_000),
+  generatedAt: InstantSchema,
+  integrity: z.strictObject({ algorithm: z.literal("sha256"), digest: DigestSchema }),
+  result: EvidenceResultSchema,
+  runId: UuidV7Schema,
+  signature: EvidenceSignatureSchema.nullable(),
+  subject: z.strictObject({
+    manifestDigest: DigestSchema,
+    repository: z.string().min(1).max(200),
+    revision: z.string().min(1).max(200),
+  }),
+  tool: z.strictObject({ name: z.string().min(1).max(80), version: z.string().min(1).max(80) }),
+});
+
+export type StoredEvidence = z.infer<typeof StoredEvidenceSchema>;
+
 export type PolicyRuleDiff = Readonly<{
   after: unknown;
   before: unknown;
@@ -33,7 +57,7 @@ export type PolicyRuleDiff = Readonly<{
 
 export type Profile<
   TPolicy extends PolicyEnvelope = PolicyEnvelope,
-  TEvidence extends EvidenceEnvelope = EvidenceEnvelope,
+  TEvidence extends StoredEvidence = StoredEvidence,
 > = Readonly<{
   policyKind: string;
   evidenceKind: string;

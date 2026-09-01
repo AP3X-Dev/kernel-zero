@@ -127,6 +127,14 @@ describe("EvidenceService", () => {
     await expect(new EvidenceService(repository).submit(submission(evidence()), now)).rejects.toMatchObject({ reason: "profile_unknown" });
   });
 
+  it("fails closed when the stored policy body does not satisfy its own profile", async () => {
+    const repository = new MemoryRepository();
+    repository.policy = { digest, document: {}, state: "approved" };
+    await expect(new EvidenceService(repository).submit(submission(evidence()), now)).rejects.toMatchObject({ reason: "resolved_policy_invalid" });
+    repository.policy = { digest, document: { ...policy, rules: [] }, state: "approved" };
+    await expect(new EvidenceService(repository).submit(submission(evidence()), now)).rejects.toMatchObject({ reason: "resolved_policy_invalid" });
+  });
+
   it("rejects evidence of a different profile than the stored policy", async () => {
     const repository = new MemoryRepository();
     await expect(new EvidenceService(repository).submit(submission({ ...evidence(), kind: "ManifestEvidence" }), now)).rejects.toMatchObject({ reason: "profile_mismatch" });

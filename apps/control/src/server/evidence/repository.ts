@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { StoredEvidence } from "@kernel-zero/persistence";
+import type { StoredEvidence } from "@kernel-zero/contracts";
 
 export type EvidenceAttestationState = "attested" | "recorded";
 

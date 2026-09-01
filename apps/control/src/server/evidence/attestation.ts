@@ -2,7 +2,7 @@ import "server-only";
 
 import { createPublicKey, verify } from "node:crypto";
 
-import type { StoredEvidence } from "@kernel-zero/persistence";
+import type { StoredEvidence } from "@kernel-zero/contracts";
 
 import { invalidEvidence } from "./errors";
 import type { EvidenceAttestationState, EvidenceRepository } from "./repository";

@@ -2,7 +2,7 @@ import { PolicyEnvelopeSchema, type PolicyEnvelope, type Profile } from "@kernel
 import { softwareArchitectureProfile } from "@kernel-zero/profile-software-architecture";
 
 export const PROFILES: readonly Profile[] = Object.freeze([
-  softwareArchitectureProfile as Profile,
+  softwareArchitectureProfile,
 ]);
 
 const byPolicyKind: ReadonlyMap<string, Profile> = new Map(PROFILES.map((profile) => [profile.policyKind, profile]));

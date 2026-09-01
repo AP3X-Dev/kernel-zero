@@ -1,8 +1,7 @@
 import "server-only";
 
-import { EvidenceEnvelopeSchema } from "@kernel-zero/contracts";
-import { StoredEvidenceSchema, type StoredEvidence } from "@kernel-zero/persistence";
-import { parsePolicyDocument } from "@kernel-zero/profiles";
+import { EvidenceEnvelopeSchema, PolicyEnvelopeSchema, type StoredEvidence } from "@kernel-zero/contracts";
+import { profileForPolicyKind } from "@kernel-zero/profiles";
 
 import { requireCapability, type WorkspaceAuthoritySource } from "../authorization/workspace";
 import { verifyEvidenceAttestation } from "./attestation";
@@ -41,16 +40,18 @@ export class EvidenceService {
 
     const resolved = await this.#repository.resolveApprovedPolicy({ digest: envelope.data.policy.digest, workspaceId: input.workspaceId });
     if (resolved === null) throw invalidEvidence("approved_policy_not_found");
-    const parsedPolicy = parsePolicyDocument(resolved.document);
-    if (parsedPolicy === null) throw invalidEvidence("profile_unknown");
-    const { policy, profile } = parsedPolicy;
+    const storedPolicy = PolicyEnvelopeSchema.safeParse(resolved.document);
+    if (!storedPolicy.success) throw invalidEvidence("resolved_policy_invalid");
+    const profile = profileForPolicyKind(storedPolicy.data.kind);
+    if (profile === null) throw invalidEvidence("profile_unknown");
     if (profile.evidenceKind !== envelope.data.kind) throw invalidEvidence("profile_mismatch");
+    const parsedPolicy = profile.policySchema.safeParse(resolved.document);
+    if (!parsedPolicy.success) throw invalidEvidence("resolved_policy_invalid");
+    const policy = parsedPolicy.data;
 
     const parsed = profile.evidenceSchema.safeParse(input.document);
     if (!parsed.success) throw invalidEvidence("contract");
-    const stored = StoredEvidenceSchema.safeParse(parsed.data);
-    if (!stored.success) throw invalidEvidence("contract");
-    const evidence: StoredEvidence = stored.data;
+    const evidence: StoredEvidence = parsed.data;
     const generatedAt = new Date(evidence.generatedAt);
     if (generatedAt.getTime() > now.getTime() + MAXIMUM_FUTURE_SKEW_MS) throw invalidEvidence("generated_at_future");
     if (resolved.digest !== evidence.policy.digest || policy.metadata.name !== evidence.policy.name || policy.metadata.revision !== evidence.policy.revision) {
