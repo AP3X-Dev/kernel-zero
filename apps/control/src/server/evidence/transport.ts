@@ -2,7 +2,7 @@ import "server-only";
 
 import { gunzipSync } from "node:zlib";
 
-import { REPOSITORY_EVIDENCE_MEDIA_TYPE } from "@kernel-zero/contracts";
+import { EVIDENCE_MEDIA_TYPE } from "@kernel-zero/contracts";
 
 import { EvidenceIngressError, invalidEvidence } from "./errors";
 
@@ -20,7 +20,7 @@ export async function readEvidenceRequest(request: Request, limits: EvidenceRequ
   const transferLimitBytes = limits.transferLimitBytes ?? EVIDENCE_TRANSFER_LIMIT_BYTES;
   const decompressedLimitBytes = limits.decompressedLimitBytes ?? EVIDENCE_DECOMPRESSED_LIMIT_BYTES;
   const mediaType = request.headers.get("content-type")?.trim().toLowerCase();
-  if (mediaType !== REPOSITORY_EVIDENCE_MEDIA_TYPE) {
+  if (mediaType !== EVIDENCE_MEDIA_TYPE) {
     throw new EvidenceIngressError(415, "INVALID_EVIDENCE", "unsupported_media_type");
   }
 

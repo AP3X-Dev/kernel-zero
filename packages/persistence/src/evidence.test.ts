@@ -5,9 +5,8 @@ import {
   canonicalEvidenceDigest,
   deriveEvidenceSummary,
   findingIdentity,
-  findingMessage,
-  type RepositoryEvidence,
 } from "@kernel-zero/contracts";
+import { findingMessage, type RepositoryEvidence } from "@kernel-zero/profile-software-architecture";
 
 import {
   deleteExpiredEvidence,

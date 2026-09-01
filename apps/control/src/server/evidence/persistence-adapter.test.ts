@@ -31,13 +31,17 @@ describe("evidence persistence adapter", () => {
     }));
   });
 
-  it("fails closed when stored approved policy bytes do not satisfy the public contract", async () => {
+  it("returns stored bytes for the profile registry to validate and fails closed on unreadable JSON", async () => {
     const digest = canonicalSha256(policy);
-    const repository = createEvidenceRepository({
+    const stored = createEvidenceRepository({
       policyRevision: { findFirst: vi.fn().mockResolvedValue({ canonicalJson: "{}", digest, state: "active" }) },
     } as unknown as PersistenceClient);
+    await expect(stored.resolveApprovedPolicy({ digest, workspaceId: "workspace" })).resolves.toEqual({ digest, document: {}, state: "active" });
 
-    await expect(repository.resolveApprovedPolicy({ digest, workspaceId: "workspace" })).rejects.toThrow();
+    const unreadable = createEvidenceRepository({
+      policyRevision: { findFirst: vi.fn().mockResolvedValue({ canonicalJson: "not json", digest, state: "active" }) },
+    } as unknown as PersistenceClient);
+    await expect(unreadable.resolveApprovedPolicy({ digest, workspaceId: "workspace" })).rejects.toThrow();
   });
 
   it("uses tenant-scoped selectors for signing keys and current grants", async () => {

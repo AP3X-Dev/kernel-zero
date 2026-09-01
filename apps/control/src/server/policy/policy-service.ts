@@ -1,15 +1,15 @@
 import "server-only";
 
-import type { RepositoryPolicy } from "@kernel-zero/contracts";
+import type { PolicyRuleDiff } from "@kernel-zero/contracts";
 import {
   activatePolicyRevision,
   approvePolicyRevision,
   createPolicyPack,
-  diffPolicyRules,
   retirePolicyPack,
   savePolicyDraft,
   type PersistenceClient,
 } from "@kernel-zero/persistence";
+import { parsePolicyDocument } from "@kernel-zero/profiles";
 
 import { requireCapability, type WorkspaceAuthoritySource } from "../authorization/workspace";
 
@@ -52,12 +52,16 @@ export class PolicyService {
 
   async create(input: Readonly<{ actor: PolicyActor; correlationId: string; description: string; displayName: string; document: unknown; slug: string; workspaceId: string }>) {
     authorize(input.actor, "policy.write");
-    return this.#operations.create(this.#prisma, { actorUserId: input.actor.userId, correlationId: input.correlationId, description: input.description, displayName: input.displayName, document: input.document, slug: input.slug, workspaceId: input.workspaceId });
+    const parsed = parsePolicyDocument(input.document);
+    if (parsed === null) throw new Error("POLICY_INVALID");
+    return this.#operations.create(this.#prisma, { actorUserId: input.actor.userId, correlationId: input.correlationId, description: input.description, displayName: input.displayName, document: parsed.policy, slug: input.slug, workspaceId: input.workspaceId });
   }
 
   async save(input: Readonly<{ actor: PolicyActor; correlationId: string; document: unknown; packId: string; workspaceId: string }>) {
     authorize(input.actor, "policy.write");
-    return this.#operations.save(this.#prisma, { actorUserId: input.actor.userId, correlationId: input.correlationId, document: input.document, packId: input.packId, workspaceId: input.workspaceId });
+    const parsed = parsePolicyDocument(input.document);
+    if (parsed === null) throw new Error("POLICY_INVALID");
+    return this.#operations.save(this.#prisma, { actorUserId: input.actor.userId, correlationId: input.correlationId, document: parsed.policy, packId: input.packId, workspaceId: input.workspaceId });
   }
 
   async retire(input: Readonly<{ actor: PolicyActor; correlationId: string; packId: string; workspaceId: string }>): Promise<void> {
@@ -65,8 +69,12 @@ export class PolicyService {
     await this.#operations.retire(this.#prisma, { actorUserId: input.actor.userId, correlationId: input.correlationId, packId: input.packId, workspaceId: input.workspaceId });
   }
 
-  diff(before: RepositoryPolicy, after: RepositoryPolicy) {
-    return diffPolicyRules(before, after);
+  diff(before: unknown, after: unknown): readonly PolicyRuleDiff[] {
+    const left = parsePolicyDocument(before);
+    const right = parsePolicyDocument(after);
+    if (left === null || right === null) throw new Error("POLICY_PROFILE_MISMATCH");
+    if (left.profile !== right.profile) throw new Error("POLICY_PROFILE_MISMATCH");
+    return left.profile.diffRules(left.policy, right.policy);
   }
 }
 

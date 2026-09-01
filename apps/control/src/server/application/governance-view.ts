@@ -1,6 +1,6 @@
 import "server-only";
 
-import { RepositoryPolicySchema, type RepositoryPolicy } from "@kernel-zero/contracts";
+import type { PolicyEnvelope } from "@kernel-zero/contracts";
 import {
   listEvidenceFindings,
   listEvidenceRuns,
@@ -10,6 +10,7 @@ import {
   type PersistenceClient,
   type SafeAuditRecord,
 } from "@kernel-zero/persistence";
+import { parsePolicyDocument } from "@kernel-zero/profiles";
 
 export type PolicyListItem = Readonly<{
   activeDigest: string | null;
@@ -21,10 +22,19 @@ export type PolicyListItem = Readonly<{
   updatedAt: Date;
 }>;
 
+export type PolicyDetailRule = Readonly<{
+  check: Readonly<{ kind: string }>;
+  id: string;
+  level: string;
+  remediation: string;
+  title: string;
+}>;
+
 export type PolicyDetailView = Readonly<{
   description: string;
   displayName: string;
-  document: RepositoryPolicy | null;
+  document: PolicyEnvelope | null;
+  rules: readonly PolicyDetailRule[];
   lifecycleState: string;
   revisions: readonly Readonly<{
     approvedAt: Date | null;
@@ -115,10 +125,12 @@ export async function loadPolicyDetailView(
   });
   if (row === null) return null;
   const latest = row.revisions[0];
+  const policy = latest === undefined ? null : parsePolicy(latest.canonicalJson);
   return Object.freeze({
     description: row.description,
     displayName: row.displayName,
-    document: latest === undefined ? null : parsePolicy(latest.canonicalJson),
+    document: policy,
+    rules: policy === null ? [] : policyRules(policy),
     lifecycleState: row.lifecycleState,
     revisions: Object.freeze(row.revisions.map((revision) => Object.freeze({
       approvedAt: revision.approvedAt,
@@ -258,12 +270,15 @@ export async function loadPaymentEventsView(
   return Object.freeze(rows.map((row) => Object.freeze(row)));
 }
 
-function parsePolicy(value: string): RepositoryPolicy | null {
+function parsePolicy(value: string): PolicyEnvelope | null {
   try {
-    const parsed: unknown = JSON.parse(value);
-    const result = RepositoryPolicySchema.safeParse(parsed);
-    return result.success ? result.data : null;
+    return parsePolicyDocument(JSON.parse(value) as unknown)?.policy ?? null;
   } catch {
     return null;
   }
+}
+
+function policyRules(policy: PolicyEnvelope): readonly PolicyDetailRule[] {
+  const rules = (policy as { rules?: readonly PolicyDetailRule[] }).rules ?? [];
+  return Object.freeze(rules.map((rule) => Object.freeze(rule)));
 }

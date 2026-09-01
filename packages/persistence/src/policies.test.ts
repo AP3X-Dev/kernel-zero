@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { canonicalJson } from "@kernel-zero/domain";
 
-import { diffPolicyRules, approvePolicyRevision, savePolicyDraft, activatePolicyRevision } from "./policies";
+import { approvePolicyRevision, savePolicyDraft, activatePolicyRevision } from "./policies";
 
 const WORKSPACE = "0195f000-0000-7000-8000-000000000002";
 const AUTHOR = "0195f000-0000-7000-8000-000000000003";
 const CHECKER = "0195f000-0000-7000-8000-000000000004";
 const CORRELATION = "0195f000-0000-7000-8000-000000000001";
 const policy = (revision = 1) => ({
-  apiVersion: "kernel-zero.dev/v1", kind: "RepositoryPolicy",
+  apiVersion: "kernel-zero.dev/v1" as const, kind: "RepositoryPolicy",
   metadata: { name: "service-boundaries", revision, description: "Repository architecture rules" },
   scope: { languages: ["typescript"], include: ["apps/**/*.ts"], exclude: [] },
   rules: [{ id: "rule-one", title: "Rule", level: "error", check: { kind: "require-import", files: ["apps/**"], module: "server-only", allowTypeOnly: false }, remediation: "Add the import." }],
@@ -50,18 +50,5 @@ describe("policy lifecycle", () => {
     expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
     expect(updateQuota.mock.calls[0]?.[0].data.used.increment).toBe(1);
     expect(updatePack.mock.calls[0]?.[0].data).toMatchObject({ activeRevisionId: "revision", lifecycleState: "active" });
-  });
-
-  it("diffs normalized rule IDs as added, changed, and removed", () => {
-    const before = policy();
-    const after = { ...policy(2), rules: [{ ...before.rules[0], title: "Changed" }, { ...before.rules[0], id: "rule-two" }] };
-    expect(diffPolicyRules(before as never, after as never)).toEqual([
-      expect.objectContaining({ id: "rule-one", status: "changed" }),
-      expect.objectContaining({ id: "rule-two", status: "added" }),
-    ]);
-    expect(diffPolicyRules(after as never, { ...policy(3), rules: [] } as never)).toEqual([
-      expect.objectContaining({ id: "rule-one", status: "removed" }),
-      expect.objectContaining({ id: "rule-two", status: "removed" }),
-    ]);
   });
 });

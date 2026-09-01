@@ -54,7 +54,7 @@
         "kind": "require-boundary-parse",
         "files": ["apps/control/src/server/evidence/evidence-service.ts"],
         "boundaryCalls": ["verifyEvidenceAttestation"],
-        "parserCalls": ["RepositoryEvidenceSchema.safeParse"]
+        "parserCalls": ["StoredEvidenceSchema.safeParse"]
       },
       "remediation": "Pass only a value proven by the strict evidence schema to the service."
     },

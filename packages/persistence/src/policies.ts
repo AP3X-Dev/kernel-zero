@@ -1,7 +1,7 @@
 import "server-only";
 
-import { canonicalJson, generateUuidV7, sha256 } from "@kernel-zero/domain";
-import { RepositoryPolicySchema } from "@kernel-zero/contracts";
+import { canonicalJson, generateUuidV7, sha256, type JsonValue } from "@kernel-zero/domain";
+import { PolicyEnvelopeSchema, type PolicyEnvelope } from "@kernel-zero/contracts";
 
 import type { PersistenceClient } from "./client";
 import { createAuditRepository } from "./audit";
@@ -12,10 +12,10 @@ type PolicyActorInput = Readonly<{ actorUserId: string; correlationId: string; w
 export async function createPolicyPack(client: PersistenceClient, input: PolicyActorInput & Readonly<{
   description: string;
   displayName: string;
-  document: unknown;
+  document: PolicyEnvelope;
   slug: string;
 }>): Promise<Readonly<{ packId: string; revisionId: string }>> {
-  const document = RepositoryPolicySchema.parse(input.document);
+  const document = PolicyEnvelopeSchema.parse(input.document);
   if (document.metadata.revision !== 1 || document.metadata.name !== input.slug) throw failure("VALIDATION_FAILED", "policy_metadata");
   return client.$transaction(async (tx) => {
     const packId = generateUuidV7();
@@ -25,7 +25,7 @@ export async function createPolicyPack(client: PersistenceClient, input: PolicyA
       lifecycleState: "draft", slug: input.slug, workspaceId: input.workspaceId,
     } });
     await tx.policyRevision.create({ data: {
-      authorId: input.actorUserId, canonicalJson: canonicalJson(document), id: revisionId,
+      authorId: input.actorUserId, canonicalJson: canonicalPolicyBytes(document), id: revisionId,
       packId, revision: 1, state: "draft", workspaceId: input.workspaceId,
     } });
     await appendAudit(tx, input, "policy.pack-created", "policy-pack", packId, { revision: 1 });
@@ -34,10 +34,10 @@ export async function createPolicyPack(client: PersistenceClient, input: PolicyA
 }
 
 export async function savePolicyDraft(client: PersistenceClient, input: PolicyActorInput & Readonly<{
-  document: unknown;
+  document: PolicyEnvelope;
   packId: string;
 }>): Promise<Readonly<{ revision: number; revisionId: string }>> {
-  const document = RepositoryPolicySchema.parse(input.document);
+  const document = PolicyEnvelopeSchema.parse(input.document);
   return client.$transaction(async (tx) => {
     const current = await tx.policyRevision.findFirst({
       orderBy: { revision: "desc" },
@@ -46,7 +46,7 @@ export async function savePolicyDraft(client: PersistenceClient, input: PolicyAc
     if (current !== null) {
       if (document.metadata.revision !== current.revision) throw failure("VALIDATION_FAILED", "metadata.revision");
       const changed = await tx.policyRevision.updateMany({
-        data: { authorId: input.actorUserId, canonicalJson: canonicalJson(document) },
+        data: { authorId: input.actorUserId, canonicalJson: canonicalPolicyBytes(document) },
         where: { id: current.id, state: "draft", workspaceId: input.workspaceId },
       });
       if (changed.count !== 1) throw failure("CONFLICT", "draft_changed");
@@ -59,7 +59,7 @@ export async function savePolicyDraft(client: PersistenceClient, input: PolicyAc
     if (document.metadata.revision !== revision) throw failure("VALIDATION_FAILED", "metadata.revision");
     const revisionId = generateUuidV7();
     await tx.policyRevision.create({ data: {
-      authorId: input.actorUserId, canonicalJson: canonicalJson(document), id: revisionId,
+      authorId: input.actorUserId, canonicalJson: canonicalPolicyBytes(document), id: revisionId,
       packId: input.packId, revision, state: "draft", workspaceId: input.workspaceId,
     } });
     await appendAudit(tx, input, "policy.draft-created", "policy-revision", revisionId, { revision });
@@ -72,9 +72,9 @@ export async function approvePolicyRevision(client: PersistenceClient, input: Po
     const revision = await tx.policyRevision.findFirst({ where: { id: input.revisionId, workspaceId: input.workspaceId } });
     if (revision?.state !== "draft") throw failure("NOT_FOUND", "revision");
     if (revision.authorId === input.actorUserId) throw failure("FORBIDDEN", "maker_checker");
-    const document = RepositoryPolicySchema.parse(JSON.parse(revision.canonicalJson) as unknown);
+    const document = PolicyEnvelopeSchema.parse(JSON.parse(revision.canonicalJson) as unknown);
     if (document.metadata.revision !== revision.revision) throw failure("VALIDATION_FAILED", "metadata.revision");
-    const frozenBytes = canonicalJson(document);
+    const frozenBytes = canonicalPolicyBytes(document);
     const digest = sha256(frozenBytes);
     const changed = await tx.policyRevision.updateMany({
       data: { approvedAt: new Date(), approverId: input.actorUserId, canonicalJson: frozenBytes, digest, state: "approved" },
@@ -124,6 +124,11 @@ export async function retirePolicyPack(client: PersistenceClient, input: PolicyA
 
 async function appendAudit(tx: Parameters<typeof createAuditRepository>[0], input: PolicyActorInput, actionCode: string, subjectType: string, subjectId: string, metadata: Record<string, string | number>): Promise<void> {
   await createAuditRepository(tx).append({ actionCode, actor: { kind: "user", userId: input.actorUserId }, correlationId: input.correlationId, description: actionCode.replaceAll(".", " "), metadata, subjectId, subjectType, workspaceOpaqueId: input.workspaceId });
+}
+
+/** Envelope documents come from validated JSON, so their unknown-valued extra keys are JSON by construction. */
+function canonicalPolicyBytes(document: PolicyEnvelope): string {
+  return canonicalJson(document as unknown as JsonValue);
 }
 
 function failure(code: string, reason: string): Error { return new Error(`${code}:${reason}`); }

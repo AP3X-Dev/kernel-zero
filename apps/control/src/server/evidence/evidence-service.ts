@@ -1,12 +1,13 @@
 import "server-only";
 
-import { RepositoryEvidenceSchema, RepositoryPolicySchema, type RepositoryEvidence } from "@kernel-zero/contracts";
+import { EvidenceEnvelopeSchema } from "@kernel-zero/contracts";
+import { StoredEvidenceSchema, type StoredEvidence } from "@kernel-zero/persistence";
+import { parsePolicyDocument } from "@kernel-zero/profiles";
 
 import { requireCapability, type WorkspaceAuthoritySource } from "../authorization/workspace";
 import { verifyEvidenceAttestation } from "./attestation";
 import { EvidenceIngressError, invalidEvidence } from "./errors";
 import type { EvidenceRepository } from "./repository";
-import { findingCompatibilityReason } from "./rule-compatibility";
 
 const MAXIMUM_FUTURE_SKEW_MS = 15 * 60 * 1_000;
 
@@ -34,24 +35,30 @@ export class EvidenceService {
     const denied = requireCapability(input.actor, "evidence.submit");
     if (denied !== null) throw new EvidenceIngressError(403, denied.code, "capability_denied");
 
-    const parsed = RepositoryEvidenceSchema.safeParse(input.document);
+    const envelope = EvidenceEnvelopeSchema.safeParse(input.document);
+    if (!envelope.success) throw invalidEvidence("contract");
+    if (envelope.data.workspace !== input.workspaceId) throw invalidEvidence("workspace_mismatch");
+
+    const resolved = await this.#repository.resolveApprovedPolicy({ digest: envelope.data.policy.digest, workspaceId: input.workspaceId });
+    if (resolved === null) throw invalidEvidence("approved_policy_not_found");
+    const parsedPolicy = parsePolicyDocument(resolved.document);
+    if (parsedPolicy === null) throw invalidEvidence("profile_unknown");
+    const { policy, profile } = parsedPolicy;
+    if (profile.evidenceKind !== envelope.data.kind) throw invalidEvidence("profile_mismatch");
+
+    const parsed = profile.evidenceSchema.safeParse(input.document);
     if (!parsed.success) throw invalidEvidence("contract");
-    const evidence: RepositoryEvidence = parsed.data;
-    if (evidence.workspace !== input.workspaceId) throw invalidEvidence("workspace_mismatch");
+    const stored = StoredEvidenceSchema.safeParse(parsed.data);
+    if (!stored.success) throw invalidEvidence("contract");
+    const evidence: StoredEvidence = stored.data;
     const generatedAt = new Date(evidence.generatedAt);
     if (generatedAt.getTime() > now.getTime() + MAXIMUM_FUTURE_SKEW_MS) throw invalidEvidence("generated_at_future");
-
-    const resolved = await this.#repository.resolveApprovedPolicy({ digest: evidence.policy.digest, workspaceId: input.workspaceId });
-    if (resolved === null) throw invalidEvidence("approved_policy_not_found");
-    const policyResult = RepositoryPolicySchema.safeParse(resolved.document);
-    if (!policyResult.success) throw invalidEvidence("resolved_policy_invalid");
-    const policy = policyResult.data;
     if (resolved.digest !== evidence.policy.digest || policy.metadata.name !== evidence.policy.name || policy.metadata.revision !== evidence.policy.revision) {
       throw invalidEvidence("policy_identity_mismatch");
     }
 
     for (const finding of evidence.findings) {
-      const reason = findingCompatibilityReason(policy, finding);
+      const reason = profile.findingCompatibilityReason(policy, finding);
       if (reason !== null) throw invalidEvidence(reason);
     }
     await validateExceptionApplications(this.#repository, evidence, generatedAt);
@@ -68,7 +75,7 @@ export class EvidenceService {
   }
 }
 
-async function validateExceptionApplications(repository: EvidenceRepository, evidence: RepositoryEvidence, generatedAt: Date): Promise<void> {
+async function validateExceptionApplications(repository: EvidenceRepository, evidence: StoredEvidence, generatedAt: Date): Promise<void> {
   const applications = evidence.findings.filter((finding): finding is typeof finding & { exceptionId: string } => finding.exceptionId !== null);
   if (applications.length === 0) return;
   if (evidence.exceptionBundleDigest === null) throw invalidEvidence("exception_bundle_digest_missing");

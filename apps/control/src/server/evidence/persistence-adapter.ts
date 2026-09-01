@@ -1,6 +1,5 @@
 import "server-only";
 
-import { RepositoryPolicySchema } from "@kernel-zero/contracts";
 import { isSha256Digest } from "@kernel-zero/domain";
 import {
   storeEvidenceRun,
@@ -47,7 +46,7 @@ export function createEvidenceRepository(client: PersistenceClient): EvidenceRep
       if (revision === null || !isSha256Digest(revision.digest) || (revision.state !== "approved" && revision.state !== "active")) return null;
       return {
         digest: revision.digest,
-        document: RepositoryPolicySchema.parse(JSON.parse(revision.canonicalJson) as unknown),
+        document: JSON.parse(revision.canonicalJson) as unknown,
         state: revision.state,
       };
     },

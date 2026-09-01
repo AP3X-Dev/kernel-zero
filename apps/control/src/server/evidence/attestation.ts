@@ -2,14 +2,14 @@ import "server-only";
 
 import { createPublicKey, verify } from "node:crypto";
 
-import type { RepositoryEvidence } from "@kernel-zero/contracts";
+import type { StoredEvidence } from "@kernel-zero/persistence";
 
 import { invalidEvidence } from "./errors";
 import type { EvidenceAttestationState, EvidenceRepository } from "./repository";
 
 export async function verifyEvidenceAttestation(
   repository: EvidenceRepository,
-  evidence: RepositoryEvidence,
+  evidence: StoredEvidence,
 ): Promise<EvidenceAttestationState> {
   if (evidence.signature === null) return "recorded";
   const publicKey = await repository.findActiveSigningKey({ keyId: evidence.signature.keyId, workspaceId: evidence.workspace });

@@ -1,14 +1,11 @@
 {
-  "name": "@kernel-zero/persistence",
+  "name": "@kernel-zero/profiles",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "dependencies": {
     "@kernel-zero/contracts": "*",
-    "@kernel-zero/domain": "*",
-    "@prisma/client": "^6.19.0",
-    "server-only": "^0.0.1",
-    "zod": "^4.1.0"
+    "@kernel-zero/profile-software-architecture": "*"
   }
 }

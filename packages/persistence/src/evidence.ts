@@ -1,7 +1,17 @@
 import "server-only";
 
 import type { Prisma } from "@prisma/client";
-import { RepositoryEvidenceSchema, type RepositoryEvidence } from "@kernel-zero/contracts";
+import { z } from "zod";
+
+import {
+  DigestSchema,
+  EvidenceEnvelopeSchema,
+  EvidenceFindingSchema,
+  EvidenceResultSchema,
+  EvidenceSignatureSchema,
+  InstantSchema,
+  UuidV7Schema,
+} from "@kernel-zero/contracts";
 import {
   PLAN_CATALOGUE,
   generateUuidV7,
@@ -15,6 +25,25 @@ import {
 import { createAuditRepository } from "./audit";
 import type { PersistenceClient, TransactionClient } from "./client";
 
+/** The kernel-generic evidence shape persistence stores; profile-specific rules stay in the profile. */
+export const StoredEvidenceSchema = EvidenceEnvelopeSchema.extend({
+  exceptionBundleDigest: DigestSchema.nullable(),
+  findings: z.array(EvidenceFindingSchema).max(5_000),
+  generatedAt: InstantSchema,
+  integrity: z.strictObject({ algorithm: z.literal("sha256"), digest: DigestSchema }),
+  result: EvidenceResultSchema,
+  runId: UuidV7Schema,
+  signature: EvidenceSignatureSchema.nullable(),
+  subject: z.strictObject({
+    manifestDigest: DigestSchema,
+    repository: z.string().min(1).max(200),
+    revision: z.string().min(1).max(200),
+  }),
+  tool: z.strictObject({ name: z.string().min(1).max(80), version: z.string().min(1).max(80) }),
+});
+
+export type StoredEvidence = z.infer<typeof StoredEvidenceSchema>;
+
 export type EvidenceAttestationState = "attested" | "recorded";
 export type EvidenceResultStatus = "error" | "fail" | "pass";
 export type FindingExceptionState = "excepted" | "unexcepted";
@@ -22,7 +51,7 @@ export type FindingExceptionState = "excepted" | "unexcepted";
 export type StoreEvidenceRunInput = Readonly<{
   attestationState: EvidenceAttestationState;
   correlationId: string;
-  document: RepositoryEvidence;
+  document: StoredEvidence;
   submitterId: string;
   workspaceId: string;
 }>;
@@ -178,7 +207,7 @@ export async function storeEvidenceRun(
   if (!EVIDENCE_ATTESTATION_STATES.has(input.attestationState)) {
     throw failure("VALIDATION_FAILED", "attestationState");
   }
-  const parsed = RepositoryEvidenceSchema.safeParse(input.document);
+  const parsed = StoredEvidenceSchema.safeParse(input.document);
   if (!parsed.success) throw failure("INVALID_EVIDENCE", "document");
   const document = parsed.data;
   if (document.workspace !== input.workspaceId) throw failure("NOT_FOUND", "workspace");
@@ -313,7 +342,7 @@ export async function deleteExpiredEvidence(
 async function storeInTransaction(
   tx: TransactionClient,
   input: StoreEvidenceRunInput,
-  document: RepositoryEvidence,
+  document: StoredEvidence,
 ): Promise<StoreEvidenceRunResult> {
   const existing = await tx.evidenceRun.findUnique({
     select: { integrityDigest: true },
@@ -388,12 +417,12 @@ async function storeInTransaction(
   return storedResult(true, document);
 }
 
-function resolveDuplicate(existing: StoredDuplicate, document: RepositoryEvidence): StoreEvidenceRunResult {
+function resolveDuplicate(existing: StoredDuplicate, document: StoredEvidence): StoreEvidenceRunResult {
   if (existing.integrityDigest !== document.integrity.digest) throw failure("CONFLICT", "run_digest");
   return storedResult(false, document);
 }
 
-function storedResult(created: boolean, document: RepositoryEvidence): StoreEvidenceRunResult {
+function storedResult(created: boolean, document: StoredEvidence): StoreEvidenceRunResult {
   return Object.freeze({ created, integrityDigest: document.integrity.digest, runId: document.runId });
 }
 

@@ -74,6 +74,7 @@ export {
   deleteExpiredEvidence,
   listEvidenceFindings,
   listEvidenceRuns,
+  StoredEvidenceSchema,
   storeEvidenceRun,
 } from "./evidence";
 export type {
@@ -87,6 +88,7 @@ export type {
   EvidenceRunFilters,
   EvidenceRunReview,
   FindingExceptionState,
+  StoredEvidence,
   StoreEvidenceRunInput,
   StoreEvidenceRunResult,
 } from "./evidence";

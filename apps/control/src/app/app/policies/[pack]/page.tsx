@@ -20,13 +20,13 @@ export default async function PolicyPage({ params }: PolicyPageProps) {
         <div><p className="metric-label">Pack identifier</p><p className="metric-value">{policy.slug}</p></div>
         <Status tone={policy.lifecycleState === "active" ? "positive" : "neutral"}>{policy.lifecycleState}</Status>
         <ol className="row-list" aria-label="Policy rules">
-          {policy.document?.rules.map((rule) => (
+          {policy.document === null ? <li>No valid repository policy document is available for the latest revision.</li> : policy.rules.map((rule) => (
             <li className="row-card" key={rule.id}>
               <dl><dt>Rule</dt><dd>{rule.title}<br /><span className="muted">{rule.remediation}</span></dd></dl>
               <dl><dt>Check</dt><dd>{rule.check.kind} · {rule.level}</dd></dl>
               <dl><dt>Action</dt><dd>Read only</dd></dl>
             </li>
-          )) ?? <li>No valid repository policy document is available for the latest revision.</li>}
+          ))}
         </ol>
         <details>
           <summary>Advanced JSON and canonical digest</summary>

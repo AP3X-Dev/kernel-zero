@@ -8,7 +8,8 @@
       "@/*": ["./src/*"],
       "@kernel-zero/contracts": ["../../packages/contracts/src/index.ts"],
       "@kernel-zero/domain": ["../../packages/domain/src/index.ts"],
-      "@kernel-zero/persistence": ["../../packages/persistence/src/index.ts"]
+      "@kernel-zero/persistence": ["../../packages/persistence/src/index.ts"],
+      "@kernel-zero/profiles": ["../../packages/profiles/src/index.ts"]
     }
   },
   "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],

@@ -1,12 +1,12 @@
 import "server-only";
 
-import type { RepositoryEvidence, RepositoryPolicy } from "@kernel-zero/contracts";
+import type { StoredEvidence } from "@kernel-zero/persistence";
 
 export type EvidenceAttestationState = "attested" | "recorded";
 
 export type ResolvedEvidencePolicy = Readonly<{
-  digest: RepositoryEvidence["policy"]["digest"];
-  document: RepositoryPolicy;
+  digest: StoredEvidence["policy"]["digest"];
+  document: unknown;
   state: "active" | "approved";
 }>;
 
@@ -25,7 +25,7 @@ export type CurrentExceptionGrant = Readonly<{
 export type EvidenceSaveInput = Readonly<{
   attestationState: EvidenceAttestationState;
   correlationId: string;
-  evidence: RepositoryEvidence;
+  evidence: StoredEvidence;
   submitterId: string;
   workspaceId: string;
 }>;

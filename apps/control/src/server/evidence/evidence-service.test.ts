@@ -4,11 +4,14 @@ import {
   canonicalEvidenceDigest,
   deriveEvidenceSummary,
   findingIdentity,
-  findingMessage,
   type EvidenceFinding,
+} from "@kernel-zero/contracts";
+import {
+  findingMessage,
+  type FindingMessageCode,
   type RepositoryEvidence,
   type RepositoryPolicy,
-} from "@kernel-zero/contracts";
+} from "@kernel-zero/profile-software-architecture";
 import { describe, expect, it } from "vitest";
 
 import { EvidenceService } from "./evidence-service";
@@ -41,7 +44,7 @@ const policy: RepositoryPolicy = {
   scope: { exclude: [], include: ["**/*.ts"], languages: ["typescript"] },
 };
 
-function finding(overrides: Partial<EvidenceFinding> = {}): EvidenceFinding {
+function finding(overrides: Partial<EvidenceFinding> & Readonly<{ messageCode?: FindingMessageCode }> = {}): EvidenceFinding {
   const identity = findingIdentity({
     location: { endColumn: 1, endLine: 1, startColumn: 1, startLine: 1 },
     messageCode: overrides.messageCode ?? "REQUIRED_IMPORT_MISSING",
@@ -116,6 +119,17 @@ describe("EvidenceService", () => {
     await expect(new EvidenceService(repository).submit(submission(evidence()), now)).rejects.toMatchObject({ reason: "approved_policy_not_found" });
     repository.policy = { digest, document: { ...policy, metadata: { ...policy.metadata, revision: 2 } }, state: "approved" };
     await expect(new EvidenceService(repository).submit(submission(evidence()), now)).rejects.toMatchObject({ reason: "policy_identity_mismatch" });
+  });
+
+  it("rejects evidence whose stored policy kind has no profile", async () => {
+    const repository = new MemoryRepository();
+    repository.policy = { digest, document: { ...policy, kind: "MysteryPolicy" }, state: "approved" };
+    await expect(new EvidenceService(repository).submit(submission(evidence()), now)).rejects.toMatchObject({ reason: "profile_unknown" });
+  });
+
+  it("rejects evidence of a different profile than the stored policy", async () => {
+    const repository = new MemoryRepository();
+    await expect(new EvidenceService(repository).submit(submission({ ...evidence(), kind: "ManifestEvidence" }), now)).rejects.toMatchObject({ reason: "profile_mismatch" });
   });
 
   it("recomputes the contract and validates rule, code, level, and subject compatibility", async () => {

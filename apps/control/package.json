@@ -11,6 +11,7 @@
     "@kernel-zero/contracts": "*",
     "@kernel-zero/domain": "*",
     "@kernel-zero/persistence": "*",
+    "@kernel-zero/profiles": "*",
     "@trpc/client": "^11.5.0",
     "@trpc/react-query": "^11.5.0",
     "@trpc/server": "^11.5.0",

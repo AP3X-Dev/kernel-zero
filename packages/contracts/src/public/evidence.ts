@@ -48,7 +48,7 @@ export const EvidenceFindingSchema = z.strictObject({
 
 export type EvidenceFinding = z.infer<typeof EvidenceFindingSchema>;
 
-const EvidenceResultSchema = z.strictObject({
+export const EvidenceResultSchema = z.strictObject({
   durationMs: z.number().int().nonnegative(),
   errors: z.number().int().min(0).max(5_000),
   excepted: z.number().int().min(0).max(5_000),
@@ -57,7 +57,7 @@ const EvidenceResultSchema = z.strictObject({
   warnings: z.number().int().min(0).max(5_000),
 });
 
-const EvidenceSignatureSchema = z.strictObject({
+export const EvidenceSignatureSchema = z.strictObject({
   algorithm: z.literal("ed25519"),
   keyId: z.string().trim().min(1).max(120),
   value: z.base64(),

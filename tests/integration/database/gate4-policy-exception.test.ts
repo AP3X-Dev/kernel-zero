@@ -23,7 +23,7 @@ const describeDatabase = databaseEnabled ? describe : describe.skip;
 const correlationId = "0195f000-0000-7000-8000-000000000001";
 
 const document = (revision: number) => ({
-  apiVersion: "kernel-zero.dev/v1", kind: "RepositoryPolicy",
+  apiVersion: "kernel-zero.dev/v1" as const, kind: "RepositoryPolicy",
   metadata: { description: "Gate 4 database policy", name: "gate-four-policy", revision },
   scope: { exclude: [], include: ["packages/**/*.ts"], languages: ["typescript"] },
   rules: [{ check: { allowTypeOnly: false, files: ["packages/**"], kind: "require-import", module: "server-only" }, id: "server-only-rule", level: "error", remediation: "Add the server-only marker.", title: "Server-only marker" }],
