@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { NonemptyExactStringSchema, RelativeGlobSchema, SlugSchema, uniqueArray } from "./shared";
+import { NonemptyExactStringSchema, RelativeGlobSchema, SlugSchema, uniqueArray } from "@kernel-zero/contracts";
 
 export const REPOSITORY_POLICY_MEDIA_TYPE = "application/vnd.kernel-zero.policy+json;version=1" as const;
 

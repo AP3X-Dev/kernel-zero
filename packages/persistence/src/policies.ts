@@ -1,20 +1,13 @@
 import "server-only";
 
 import { canonicalJson, generateUuidV7, sha256 } from "@kernel-zero/domain";
-import { RepositoryPolicySchema, type RepositoryPolicy } from "@kernel-zero/contracts";
+import { RepositoryPolicySchema } from "@kernel-zero/contracts";
 
 import type { PersistenceClient } from "./client";
 import { createAuditRepository } from "./audit";
 import { createQuotaRepository } from "./quota";
 
 type PolicyActorInput = Readonly<{ actorUserId: string; correlationId: string; workspaceId: string }>;
-
-export type PolicyRuleDiff = Readonly<{
-  after: RepositoryPolicy["rules"][number] | null;
-  before: RepositoryPolicy["rules"][number] | null;
-  id: string;
-  status: "added" | "changed" | "removed";
-}>;
 
 export async function createPolicyPack(client: PersistenceClient, input: PolicyActorInput & Readonly<{
   description: string;
@@ -127,20 +120,6 @@ export async function retirePolicyPack(client: PersistenceClient, input: PolicyA
     await tx.policyPack.updateMany({ data: { activeRevisionId: null, lifecycleState: "retired" }, where: { id: input.packId, workspaceId: input.workspaceId } });
     await appendAudit(tx, input, "policy.pack-retired", "policy-pack", input.packId, {});
   });
-}
-
-export function diffPolicyRules(before: RepositoryPolicy, after: RepositoryPolicy): readonly PolicyRuleDiff[] {
-  const left = new Map(before.rules.map((rule) => [rule.id, rule]));
-  const right = new Map(after.rules.map((rule) => [rule.id, rule]));
-  const result: PolicyRuleDiff[] = [];
-  for (const id of [...new Set([...left.keys(), ...right.keys()])].sort()) {
-    const beforeRule = left.get(id) ?? null;
-    const afterRule = right.get(id) ?? null;
-    if (beforeRule === null) result.push(Object.freeze({ after: afterRule, before: null, id, status: "added" }));
-    else if (afterRule === null) result.push(Object.freeze({ after: null, before: beforeRule, id, status: "removed" }));
-    else if (canonicalJson(beforeRule) !== canonicalJson(afterRule)) result.push(Object.freeze({ after: afterRule, before: beforeRule, id, status: "changed" }));
-  }
-  return Object.freeze(result);
 }
 
 async function appendAudit(tx: Parameters<typeof createAuditRepository>[0], input: PolicyActorInput, actionCode: string, subjectType: string, subjectId: string, metadata: Record<string, string | number>): Promise<void> {

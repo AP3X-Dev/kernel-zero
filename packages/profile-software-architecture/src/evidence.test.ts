@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { canonicalSha256 } from "@kernel-zero/domain";
-
 import {
-  RepositoryEvidenceSchema,
   canonicalEvidenceDigest,
   deriveEvidenceSummary,
   findingIdentity,
-  findingMessage,
-} from "./evidence";
+} from "@kernel-zero/contracts";
+import { canonicalSha256 } from "@kernel-zero/domain";
+
+import { RepositoryEvidenceSchema, findingMessage } from "./evidence";
 
 const digest = (digit: string) => `sha256:${digit.repeat(64)}` as const;
 const location = { endColumn: 10, endLine: 4, startColumn: 2, startLine: 4 };

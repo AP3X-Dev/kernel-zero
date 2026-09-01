@@ -4,20 +4,22 @@ import path from "node:path";
 
 import {
   ExceptionGrantSetSchema,
-  RepositoryEvidenceSchema,
-  RepositoryPolicySchema,
   canonicalEvidenceDigest,
   deriveEvidenceSummary,
   findingIdentity,
-  findingMessage,
   sortFindings,
   verifyExceptionGrantSet,
   type ExceptionGrantSet,
   type EvidenceFinding,
-  type FindingMessageCode,
-  type RepositoryEvidence,
 } from "@kernel-zero/contracts";
 import { canonicalJson, canonicalSha256, generateUuidV7 } from "@kernel-zero/domain";
+import {
+  RepositoryEvidenceSchema,
+  RepositoryPolicySchema,
+  findingMessage,
+  type FindingMessageCode,
+  type RepositoryEvidence,
+} from "@kernel-zero/profile-software-architecture";
 
 import type { ResolvedValidateCommand, ValidationOutcome } from "./cli";
 import { createManifestDigestInput, discoverTypeScriptSources } from "./discovery";

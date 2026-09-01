@@ -9,6 +9,7 @@ const workspaces = Object.freeze({
   "@kernel-zero/contracts": "packages/contracts",
   "@kernel-zero/domain": "packages/domain",
   "@kernel-zero/persistence": "packages/persistence",
+  "@kernel-zero/profile-software-architecture": "packages/profile-software-architecture",
   "@kernel-zero/testing": "packages/testing",
   "@kernel-zero/validator": "packages/validator",
 });
@@ -25,6 +26,10 @@ const allowedWorkspaceDependencies = Object.freeze({
     "@kernel-zero/contracts",
     "@kernel-zero/domain",
   ]),
+  "@kernel-zero/profile-software-architecture": new Set([
+    "@kernel-zero/contracts",
+    "@kernel-zero/domain",
+  ]),
   "@kernel-zero/testing": new Set([
     "@kernel-zero/contracts",
     "@kernel-zero/domain",
@@ -32,6 +37,7 @@ const allowedWorkspaceDependencies = Object.freeze({
   "@kernel-zero/validator": new Set([
     "@kernel-zero/contracts",
     "@kernel-zero/domain",
+    "@kernel-zero/profile-software-architecture",
   ]),
 });
 

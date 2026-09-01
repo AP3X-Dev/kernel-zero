@@ -8,6 +8,7 @@
       "@kernel-zero/domain": ["packages/domain/src/index.ts"],
       "@kernel-zero/domain/*": ["packages/domain/src/*"],
       "@kernel-zero/persistence": ["packages/persistence/src/index.ts"],
+      "@kernel-zero/profile-software-architecture": ["packages/profile-software-architecture/src/index.ts"],
       "@kernel-zero/testing": ["packages/testing/src/index.ts"],
       "@kernel-zero/validator": ["packages/validator/src/index.ts"]
     }

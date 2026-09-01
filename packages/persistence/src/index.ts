@@ -55,11 +55,9 @@ export {
   activatePolicyRevision,
   approvePolicyRevision,
   createPolicyPack,
-  diffPolicyRules,
   retirePolicyPack,
   savePolicyDraft,
 } from "./policies";
-export type { PolicyRuleDiff } from "./policies";
 export {
   decideException,
   isExceptionApplicable,

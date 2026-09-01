@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-import type { RepositoryPolicy } from "@kernel-zero/contracts";
+import type { RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
 import { describe, expect, it } from "vitest";
 
 import { createRepositoryProgram, evaluatePolicyChecks } from "./engine";

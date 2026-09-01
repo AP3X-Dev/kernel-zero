@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { ExceptionGrantSetSchema } from "@kernel-zero/contracts";
 import { canonicalJson } from "@kernel-zero/domain";
 
-import { ExceptionGrantSetSchema } from "./exceptions";
 import { RepositoryEvidenceSchema } from "./evidence";
 import { RepositoryPolicySchema } from "./policy";
 

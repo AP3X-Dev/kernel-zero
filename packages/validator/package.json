@@ -9,6 +9,7 @@
   "dependencies": {
     "@kernel-zero/contracts": "*",
     "@kernel-zero/domain": "*",
+    "@kernel-zero/profile-software-architecture": "*",
     "typescript": "^5.9.0"
   }
 }

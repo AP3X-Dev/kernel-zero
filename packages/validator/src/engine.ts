@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { RepositoryPolicy } from "@kernel-zero/contracts";
+import type { RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
 import ts from "typescript";
 
 export type RawFindingMessageCode =

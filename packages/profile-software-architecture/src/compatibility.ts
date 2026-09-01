@@ -1,6 +1,6 @@
-import "server-only";
+import type { EvidenceFinding } from "@kernel-zero/contracts";
 
-import type { EvidenceFinding, RepositoryPolicy } from "@kernel-zero/contracts";
+import type { RepositoryPolicy } from "./policy";
 
 const messageCodeByKind = Object.freeze({
   "forbid-import-edge": "DENIED_IMPORT",

@@ -4,31 +4,12 @@ import { canonicalSha256, type Sha256Digest } from "@kernel-zero/domain";
 
 import { DigestSchema, InstantSchema, SlugSchema, UuidV7Schema } from "./shared";
 
-export const REPOSITORY_EVIDENCE_MEDIA_TYPE = "application/vnd.kernel-zero.evidence+json;version=1" as const;
+export const EVIDENCE_MEDIA_TYPE = "application/vnd.kernel-zero.evidence+json;version=1" as const;
+/** @deprecated alias kept for the architecture profile's generated docs */
+export const REPOSITORY_EVIDENCE_MEDIA_TYPE = EVIDENCE_MEDIA_TYPE;
 
-export const FINDING_MESSAGE_CODES = Object.freeze([
-  "BOUNDARY_PARSE_REQUIRED",
-  "DENIED_IMPORT",
-  "GOVERNED_OPERATION_INVALID",
-  "PARSE_FAILURE",
-  "REQUIRED_EXPORT_KEY_MISSING",
-  "REQUIRED_IMPORT_MISSING",
-  "RESTRICTED_CALL",
-  "TENANT_PARAMETER_MISSING",
-] as const);
-
-export type FindingMessageCode = (typeof FINDING_MESSAGE_CODES)[number];
-
-const messages: Readonly<Record<FindingMessageCode, string>> = Object.freeze({
-  BOUNDARY_PARSE_REQUIRED: "A public boundary value is not proven to be parsed.",
-  DENIED_IMPORT: "A denied dependency edge was found.",
-  GOVERNED_OPERATION_INVALID: "A governed operation declaration is incomplete or invalid.",
-  PARSE_FAILURE: "A claimed source file could not be parsed.",
-  REQUIRED_EXPORT_KEY_MISSING: "A required exported object key is missing.",
-  REQUIRED_IMPORT_MISSING: "A required module import is missing.",
-  RESTRICTED_CALL: "A restricted call was found outside its allowed location.",
-  TENANT_PARAMETER_MISSING: "A tenant-scoped symbol is missing its required tenant parameter.",
-});
+export const PARSE_FAILURE_CODE = "PARSE_FAILURE" as const;
+export const MessageCodeSchema = z.string().regex(/^[A-Z][A-Z0-9_]{2,79}$/u);
 
 const SafePrintableSchema = z.string().min(1).max(500).regex(/^[\x20-\x7e]+$/u);
 const RelativeEvidencePathSchema = z.string().min(1).max(1_000).superRefine((value, context) => {
@@ -58,8 +39,8 @@ export const EvidenceFindingSchema = z.strictObject({
   id: DigestSchema,
   level: z.enum(["error", "warning"]),
   location: FindingLocationSchema,
-  message: z.string().min(1).max(500),
-  messageCode: z.enum(FINDING_MESSAGE_CODES),
+  message: SafePrintableSchema,
+  messageCode: MessageCodeSchema,
   path: RelativeEvidencePathSchema,
   ruleId: SlugSchema(3, 80),
   subject: SafePrintableSchema,
@@ -82,62 +63,70 @@ const EvidenceSignatureSchema = z.strictObject({
   value: z.base64(),
 });
 
-const RepositoryEvidenceBaseSchema = z.strictObject({
-  apiVersion: z.literal("kernel-zero.dev/evidence/v1"),
-  exceptionBundleDigest: DigestSchema.nullable(),
-  findings: z.array(EvidenceFindingSchema).max(5_000),
-  generatedAt: InstantSchema,
-  integrity: z.strictObject({ algorithm: z.literal("sha256"), digest: DigestSchema }),
-  kind: z.literal("RepositoryEvidence"),
-  policy: z.strictObject({ digest: DigestSchema, name: SlugSchema(3, 64), revision: z.number().int().min(1) }),
-  result: EvidenceResultSchema,
-  runId: UuidV7Schema,
-  signature: EvidenceSignatureSchema.nullable(),
-  subject: z.strictObject({
-    manifestDigest: DigestSchema,
-    repository: z.string().min(1).max(200).regex(/^[\x20-\x7e]+$/u),
-    revision: z.string().min(1).max(200).regex(/^[\x20-\x7e]+$/u),
-  }),
-  tool: z.strictObject({ name: z.literal("kernel-zero-validator"), version: SemverSchema }),
-  workspace: UuidV7Schema,
-});
+export type EvidenceMessages = Readonly<Record<string, string>>;
 
-export const RepositoryEvidenceSchema = RepositoryEvidenceBaseSchema.superRefine((evidence, context) => {
-  const sorted = sortFindings(evidence.findings);
-  if (sorted.some((finding, index) => finding.id !== evidence.findings[index]?.id)) {
-    context.addIssue({ code: "custom", path: ["findings"], message: "Findings must use canonical order." });
-  }
-  for (const [index, finding] of evidence.findings.entries()) {
-    const identity = findingIdentity({
-      location: finding.location,
-      messageCode: finding.messageCode,
-      path: finding.path,
-      policyDigest: evidence.policy.digest,
-      ruleId: finding.ruleId,
-      subject: finding.subject,
-    });
-    if (finding.fingerprint !== identity.fingerprint) context.addIssue({ code: "custom", path: ["findings", index, "fingerprint"], message: "Finding fingerprint does not match its canonical identity." });
-    if (finding.id !== identity.id) context.addIssue({ code: "custom", path: ["findings", index, "id"], message: "Finding ID does not match its canonical identity." });
-    if (finding.message !== findingMessage(finding.messageCode)) context.addIssue({ code: "custom", path: ["findings", index, "message"], message: "Finding message does not match its closed message code." });
-    if (finding.messageCode === "PARSE_FAILURE" && finding.subject !== "parse") context.addIssue({ code: "custom", path: ["findings", index, "subject"], message: "Parse failures require the parse subject." });
-    if (finding.messageCode === "PARSE_FAILURE" && finding.exceptionId !== null) context.addIssue({ code: "custom", path: ["findings", index, "exceptionId"], message: "Validator errors cannot be excepted." });
-  }
-  const summary = deriveEvidenceSummary(evidence.findings, evidence.result.filesScanned);
-  for (const key of ["errors", "excepted", "filesScanned", "status", "warnings"] as const) {
-    if (evidence.result[key] !== summary[key]) context.addIssue({ code: "custom", path: ["result", key], message: "Evidence summary does not match findings." });
-  }
-  if (canonicalEvidenceDigest(evidence) !== evidence.integrity.digest) context.addIssue({ code: "custom", path: ["integrity", "digest"], message: "Evidence integrity digest does not match canonical content." });
-});
+export function createEvidenceSchema(options: Readonly<{ evidenceKind: string; toolName: string; messages: EvidenceMessages }>) {
+  const base = z.strictObject({
+    apiVersion: z.literal("kernel-zero.dev/evidence/v1"),
+    exceptionBundleDigest: DigestSchema.nullable(),
+    findings: z.array(EvidenceFindingSchema).max(5_000),
+    generatedAt: InstantSchema,
+    integrity: z.strictObject({ algorithm: z.literal("sha256"), digest: DigestSchema }),
+    kind: z.literal(options.evidenceKind),
+    policy: z.strictObject({ digest: DigestSchema, name: SlugSchema(3, 64), revision: z.number().int().min(1) }),
+    result: EvidenceResultSchema,
+    runId: UuidV7Schema,
+    signature: EvidenceSignatureSchema.nullable(),
+    subject: z.strictObject({
+      manifestDigest: DigestSchema,
+      repository: z.string().min(1).max(200).regex(/^[\x20-\x7e]+$/u),
+      revision: z.string().min(1).max(200).regex(/^[\x20-\x7e]+$/u),
+    }),
+    tool: z.strictObject({ name: z.literal(options.toolName), version: SemverSchema }),
+    workspace: UuidV7Schema,
+  });
 
-export type RepositoryEvidence = z.infer<typeof RepositoryEvidenceBaseSchema>;
+  const messages: EvidenceMessages = Object.freeze({
+    ...options.messages,
+    [PARSE_FAILURE_CODE]: options.messages[PARSE_FAILURE_CODE] ?? "A claimed source file could not be parsed.",
+  });
 
-export function findingMessage(code: FindingMessageCode): string {
-  return messages[code];
+  const schema = base.superRefine((evidence, context) => {
+    const sorted = sortFindings(evidence.findings);
+    if (sorted.some((finding, index) => finding.id !== evidence.findings[index]?.id)) {
+      context.addIssue({ code: "custom", path: ["findings"], message: "Findings must use canonical order." });
+    }
+    for (const [index, finding] of evidence.findings.entries()) {
+      const identity = findingIdentity({
+        location: finding.location,
+        messageCode: finding.messageCode,
+        path: finding.path,
+        policyDigest: evidence.policy.digest,
+        ruleId: finding.ruleId,
+        subject: finding.subject,
+      });
+      if (finding.fingerprint !== identity.fingerprint) context.addIssue({ code: "custom", path: ["findings", index, "fingerprint"], message: "Finding fingerprint does not match its canonical identity." });
+      if (finding.id !== identity.id) context.addIssue({ code: "custom", path: ["findings", index, "id"], message: "Finding ID does not match its canonical identity." });
+      if (messages[finding.messageCode] === undefined) context.addIssue({ code: "custom", path: ["findings", index, "messageCode"], message: "Finding message code is not declared by the profile." });
+      if (finding.message !== messages[finding.messageCode]) context.addIssue({ code: "custom", path: ["findings", index, "message"], message: "Finding message does not match its closed message code." });
+      if (finding.messageCode === PARSE_FAILURE_CODE && finding.subject !== "parse") context.addIssue({ code: "custom", path: ["findings", index, "subject"], message: "Parse failures require the parse subject." });
+      if (finding.messageCode === PARSE_FAILURE_CODE && finding.exceptionId !== null) context.addIssue({ code: "custom", path: ["findings", index, "exceptionId"], message: "Validator errors cannot be excepted." });
+    }
+    const summary = deriveEvidenceSummary(evidence.findings, evidence.result.filesScanned);
+    for (const key of ["errors", "excepted", "filesScanned", "status", "warnings"] as const) {
+      if (evidence.result[key] !== summary[key]) context.addIssue({ code: "custom", path: ["result", key], message: "Evidence summary does not match findings." });
+    }
+    if (canonicalEvidenceDigest(evidence) !== evidence.integrity.digest) context.addIssue({ code: "custom", path: ["integrity", "digest"], message: "Evidence integrity digest does not match canonical content." });
+  });
+
+  return Object.freeze({ base, messages, schema });
 }
+
+export type GenericEvidence = z.infer<ReturnType<typeof createEvidenceSchema>["base"]>;
 
 export function findingIdentity(input: Readonly<{
   location: FindingLocation;
-  messageCode: FindingMessageCode;
+  messageCode: string;
   path: string;
   policyDigest: Sha256Digest;
   ruleId: string;
@@ -158,7 +147,7 @@ export function deriveEvidenceSummary(findings: readonly EvidenceFinding[], file
   const errors = unexcepted.filter((finding) => finding.level === "error").length;
   const warnings = unexcepted.filter((finding) => finding.level === "warning").length;
   const excepted = findings.length - unexcepted.length;
-  const incomplete = findings.some((finding) => finding.messageCode === "PARSE_FAILURE");
+  const incomplete = findings.some((finding) => finding.messageCode === PARSE_FAILURE_CODE);
   return Object.freeze({ errors, excepted, filesScanned, status: incomplete ? "error" : errors > 0 ? "fail" : "pass", warnings });
 }
 
@@ -170,7 +159,7 @@ export function sortFindings(findings: readonly EvidenceFinding[]): EvidenceFind
     || left.id.localeCompare(right.id));
 }
 
-export function canonicalEvidenceDigest(evidence: Omit<RepositoryEvidence, "integrity"> | RepositoryEvidence): Sha256Digest {
+export function canonicalEvidenceDigest(evidence: Omit<GenericEvidence, "integrity"> | GenericEvidence): Sha256Digest {
   return canonicalSha256({
     apiVersion: evidence.apiVersion,
     exceptionBundleDigest: evidence.exceptionBundleDigest,
@@ -188,8 +177,4 @@ export function canonicalEvidenceDigest(evidence: Omit<RepositoryEvidence, "inte
     tool: evidence.tool,
     workspace: evidence.workspace,
   });
-}
-
-export function repositoryEvidenceJsonSchema(): Record<string, unknown> {
-  return z.toJSONSchema(RepositoryEvidenceSchema, { io: "input", reused: "ref" });
 }

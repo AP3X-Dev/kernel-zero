@@ -1,7 +1,9 @@
-import { EvidenceFindingSchema, RepositoryPolicySchema, findingMessage, type FindingMessageCode } from "@kernel-zero/contracts";
+import { EvidenceFindingSchema } from "@kernel-zero/contracts";
 import { describe, expect, it } from "vitest";
 
-import { findingCompatibilityReason } from "./rule-compatibility";
+import { findingCompatibilityReason } from "./compatibility";
+import { findingMessage, type FindingMessageCode } from "./evidence";
+import { RepositoryPolicySchema } from "./policy";
 
 const checkCases: readonly Readonly<{
   check: Record<string, unknown>;
