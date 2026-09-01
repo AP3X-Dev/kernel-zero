@@ -93,6 +93,17 @@
         "deny": ["module:@prisma/client"]
       },
       "remediation": "Use the tenant-scoped persistence package instead of the raw client."
+    },
+    {
+      "id": "kernel-does-not-import-profiles",
+      "title": "Kernel packages never depend on a profile",
+      "level": "error",
+      "check": {
+        "kind": "forbid-import-edge",
+        "from": ["packages/domain/**/*.ts", "packages/contracts/**/*.ts", "packages/persistence/**/*.ts"],
+        "deny": ["module:@kernel-zero/profiles", "module:@kernel-zero/profile-software-architecture", "module:@kernel-zero/profile-manifest"]
+      },
+      "remediation": "Move profile-specific logic behind the Profile interface and look it up through @kernel-zero/profiles from the control application."
     }
   ]
 }
