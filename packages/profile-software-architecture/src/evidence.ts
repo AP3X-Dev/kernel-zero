@@ -36,5 +36,5 @@ export function findingMessage(code: FindingMessageCode): string {
 }
 
 export function repositoryEvidenceJsonSchema(): Record<string, unknown> {
-  return z.toJSONSchema(built.base, { io: "input", reused: "ref" });
+  return z.toJSONSchema(built.schema, { io: "input", reused: "ref" });
 }

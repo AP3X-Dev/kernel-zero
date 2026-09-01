@@ -39,7 +39,7 @@ export const EvidenceFindingSchema = z.strictObject({
   id: DigestSchema,
   level: z.enum(["error", "warning"]),
   location: FindingLocationSchema,
-  message: SafePrintableSchema,
+  message: z.string().min(1).max(500),
   messageCode: MessageCodeSchema,
   path: RelativeEvidencePathSchema,
   ruleId: SlugSchema(3, 80),
@@ -66,10 +66,19 @@ const EvidenceSignatureSchema = z.strictObject({
 export type EvidenceMessages = Readonly<Record<string, string>>;
 
 export function createEvidenceSchema(options: Readonly<{ evidenceKind: string; toolName: string; messages: EvidenceMessages }>) {
+  const messages: EvidenceMessages = Object.freeze({
+    ...options.messages,
+    [PARSE_FAILURE_CODE]: options.messages[PARSE_FAILURE_CODE] ?? "A claimed source file could not be parsed.",
+  });
+
+  const FindingSchema = EvidenceFindingSchema.extend({
+    messageCode: z.enum(Object.keys(messages) as [string, ...string[]]),
+  });
+
   const base = z.strictObject({
     apiVersion: z.literal("kernel-zero.dev/evidence/v1"),
     exceptionBundleDigest: DigestSchema.nullable(),
-    findings: z.array(EvidenceFindingSchema).max(5_000),
+    findings: z.array(FindingSchema).max(5_000),
     generatedAt: InstantSchema,
     integrity: z.strictObject({ algorithm: z.literal("sha256"), digest: DigestSchema }),
     kind: z.literal(options.evidenceKind),
@@ -84,11 +93,6 @@ export function createEvidenceSchema(options: Readonly<{ evidenceKind: string; t
     }),
     tool: z.strictObject({ name: z.literal(options.toolName), version: SemverSchema }),
     workspace: UuidV7Schema,
-  });
-
-  const messages: EvidenceMessages = Object.freeze({
-    ...options.messages,
-    [PARSE_FAILURE_CODE]: options.messages[PARSE_FAILURE_CODE] ?? "A claimed source file could not be parsed.",
   });
 
   const schema = base.superRefine((evidence, context) => {
@@ -107,7 +111,6 @@ export function createEvidenceSchema(options: Readonly<{ evidenceKind: string; t
       });
       if (finding.fingerprint !== identity.fingerprint) context.addIssue({ code: "custom", path: ["findings", index, "fingerprint"], message: "Finding fingerprint does not match its canonical identity." });
       if (finding.id !== identity.id) context.addIssue({ code: "custom", path: ["findings", index, "id"], message: "Finding ID does not match its canonical identity." });
-      if (messages[finding.messageCode] === undefined) context.addIssue({ code: "custom", path: ["findings", index, "messageCode"], message: "Finding message code is not declared by the profile." });
       if (finding.message !== messages[finding.messageCode]) context.addIssue({ code: "custom", path: ["findings", index, "message"], message: "Finding message does not match its closed message code." });
       if (finding.messageCode === PARSE_FAILURE_CODE && finding.subject !== "parse") context.addIssue({ code: "custom", path: ["findings", index, "subject"], message: "Parse failures require the parse subject." });
       if (finding.messageCode === PARSE_FAILURE_CODE && finding.exceptionId !== null) context.addIssue({ code: "custom", path: ["findings", index, "exceptionId"], message: "Validator errors cannot be excepted." });
