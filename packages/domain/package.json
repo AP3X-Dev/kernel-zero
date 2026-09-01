@@ -1,0 +1,19 @@
+{
+  "name": "@kernel-zero/domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./authorization": "./src/authorization.ts",
+    "./canonical": "./src/canonical.ts",
+    "./correlation": "./src/correlation.ts",
+    "./digest": "./src/digest.ts",
+    "./errors": "./src/errors.ts",
+    "./pagination": "./src/pagination.ts",
+    "./path": "./src/path.ts",
+    "./result": "./src/result.ts",
+    "./slug": "./src/slug.ts",
+    "./uuid": "./src/uuid.ts"
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "apiVersion": "kernel-zero.dev/v1",
+  "kind": "RepositoryPolicy",
+  "metadata": {
+    "name": "kernel-zero-self-policy",
+    "revision": 1,
+    "description": "Deterministic architecture rules for the KERNEL ZERO repository."
+  },
+  "scope": {
+    "languages": ["typescript", "tsx"],
+    "include": ["apps/**/*.ts", "apps/**/*.tsx", "packages/**/*.ts"],
+    "exclude": ["**/*.test.ts", "**/fixtures/**", "packages/persistence/src/client.ts"]
+  },
+  "rules": [
+    {
+      "id": "server-modules-declare-boundary",
+      "title": "Server modules declare their runtime boundary",
+      "level": "error",
+      "check": {
+        "kind": "require-import",
+        "files": ["apps/control/src/server/**/*.ts", "packages/persistence/src/**/*.ts"],
+        "module": "server-only",
+        "allowTypeOnly": false
+      },
+      "remediation": "Add the server-only side-effect import at the module boundary."
+    },
+    {
+      "id": "ui-does-not-import-persistence",
+      "title": "UI routes use application services",
+      "level": "error",
+      "check": {
+        "kind": "forbid-import-edge",
+        "from": ["apps/control/src/app/**/page.tsx", "apps/control/src/app/**/layout.tsx"],
+        "deny": ["module:@kernel-zero/persistence", "module:@prisma/client"]
+      },
+      "remediation": "Move persistence access behind a server application service."
+    },
+    {
+      "id": "transport-does-not-import-repositories",
+      "title": "Transport routes call services rather than repositories",
+      "level": "error",
+      "check": {
+        "kind": "forbid-import-edge",
+        "from": ["apps/control/src/app/api/**/*.ts"],
+        "deny": ["module:@kernel-zero/persistence", "module:@prisma/client"]
+      },
+      "remediation": "Parse at ingress and call one application service."
+    },
+    {
+      "id": "public-evidence-is-parsed",
+      "title": "Evidence ingress parses the public contract",
+      "level": "error",
+      "check": {
+        "kind": "require-boundary-parse",
+        "files": ["apps/control/src/server/evidence/evidence-service.ts"],
+        "boundaryCalls": ["verifyEvidenceAttestation"],
+        "parserCalls": ["RepositoryEvidenceSchema.safeParse"]
+      },
+      "remediation": "Pass only a value proven by the strict evidence schema to the service."
+    },
+    {
+      "id": "tenant-selector-requires-workspace",
+      "title": "Tenant selectors require workspace context",
+      "level": "error",
+      "check": {
+        "kind": "require-tenant-parameter",
+        "files": ["packages/persistence/src/tenancy.ts"],
+        "symbols": "tenantSelector",
+        "parameter": "workspaceId"
+      },
+      "remediation": "Require the exact workspace identifier in every tenant selector."
+    },
+    {
+      "id": "governed-actions-have-closed-metadata",
+      "title": "Governed actions declare enforcement metadata",
+      "level": "error",
+      "check": {
+        "kind": "require-governed-operation",
+        "files": ["apps/control/src/server/governed-actions.ts"],
+        "registryExport": "GOVERNED_ACTIONS",
+        "requiredKeys": ["capability", "tenantScope", "quota", "audit", "idempotency"],
+        "declarationCalls": ["defineGovernedAction"]
+      },
+      "remediation": "Declare every governed action through the closed registry contract."
+    },
+    {
+      "id": "raw-database-client-is-contained",
+      "title": "Raw database clients stay in persistence",
+      "level": "error",
+      "check": {
+        "kind": "forbid-import-edge",
+        "from": ["apps/**/*.ts", "apps/**/*.tsx", "packages/contracts/**/*.ts", "packages/domain/**/*.ts", "packages/validator/**/*.ts"],
+        "deny": ["module:@prisma/client"]
+      },
+      "remediation": "Use the tenant-scoped persistence package instead of the raw client."
+    }
+  ]
+}

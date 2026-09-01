@@ -1,0 +1,55 @@
+{
+  "apiVersion": "kernel-zero.dev/evidence/v1",
+  "exceptionBundleDigest": null,
+  "findings": [
+    {
+      "fingerprint": "sha256:f4159217e45266839463a0eac1f1e8c54334c000bf4675b817786bb5b69a2ca8",
+      "id": "sha256:9d4221d416e1e7e4f967445f40d4e76de501549c5591997e2dbb44c99e72f494",
+      "exceptionId": null,
+      "level": "error",
+      "location": {
+        "endColumn": 44,
+        "endLine": 8,
+        "startColumn": 1,
+        "startLine": 8
+      },
+      "message": "A denied dependency edge was found.",
+      "messageCode": "DENIED_IMPORT",
+      "path": "apps/control/ui/page.tsx",
+      "ruleId": "layers-no-ui-db",
+      "subject": "@prisma/client"
+    }
+  ],
+  "generatedAt": "2026-01-15T12:00:00.000Z",
+  "kind": "RepositoryEvidence",
+  "policy": {
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "name": "service-boundaries",
+    "revision": 1
+  },
+  "result": {
+    "errors": 1,
+    "excepted": 0,
+    "filesScanned": 42,
+    "status": "fail",
+    "warnings": 0,
+    "durationMs": 1250
+  },
+  "runId": "0195f000-0000-7000-8000-000000000001",
+  "signature": null,
+  "subject": {
+    "manifestDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "repository": "example/service",
+    "revision": "git:0123456789abcdef0123456789abcdef01234567"
+  },
+  "tool": {
+    "name": "kernel-zero-validator",
+    "version": "1.0.0"
+  },
+  "workspace": "0195f000-0000-7000-8000-000000000002",
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "sha256:372bc963baa6e1fc8244217aa6012c5209d87b5c35d33e553212861fb72e1c0e"
+  },
+  "source": "private source text"
+}

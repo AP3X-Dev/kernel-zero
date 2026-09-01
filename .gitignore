@@ -1,0 +1,40 @@
+# dependencies and build output
+node_modules/
+.next/
+dist/
+coverage/
+.tools/
+.uv-cache/
+.npm-cache/
+.tree-sitter-cache/
+.kernel-zero/
+
+# local configuration and generated data
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+credentials.json
+serviceAccountKey.json
+__pycache__/
+.venv/
+*.log
+*.tmp
+*.swp
+*.tsbuildinfo
+playwright-report/
+test-results/
+
+# operating system metadata
+.DS_Store
+Thumbs.db
+
+# private local work
+.private/
+docs/internal/
+*.local.md

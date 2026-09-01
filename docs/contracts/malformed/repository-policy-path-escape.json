@@ -1,0 +1,40 @@
+{
+  "apiVersion": "kernel-zero.dev/v1",
+  "kind": "RepositoryPolicy",
+  "metadata": {
+    "description": "Repository architecture rules",
+    "name": "service-boundaries",
+    "revision": 1
+  },
+  "scope": {
+    "exclude": [
+      "**/*.generated.ts",
+      "**/fixtures/**"
+    ],
+    "include": [
+      "../private.ts"
+    ],
+    "languages": [
+      "typescript",
+      "tsx"
+    ]
+  },
+  "rules": [
+    {
+      "check": {
+        "deny": [
+          "module:@kernel-zero/persistence",
+          "module:@prisma/client"
+        ],
+        "from": [
+          "apps/control/**"
+        ],
+        "kind": "forbid-import-edge"
+      },
+      "id": "layers-no-ui-db",
+      "level": "error",
+      "remediation": "Call an application service through a validated boundary.",
+      "title": "UI cannot import persistence"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "noEmit": true,
+    "paths": {
+      "@kernel-zero/contracts": ["packages/contracts/src/index.ts"],
+      "@kernel-zero/domain": ["packages/domain/src/index.ts"],
+      "@kernel-zero/domain/*": ["packages/domain/src/*"],
+      "@kernel-zero/persistence": ["packages/persistence/src/index.ts"],
+      "@kernel-zero/testing": ["packages/testing/src/index.ts"],
+      "@kernel-zero/validator": ["packages/validator/src/index.ts"]
+    }
+  },
+  "include": [
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "*.ts"
+  ],
+  "exclude": ["node_modules", "**/dist/**", "**/.next/**", "packages/validator/fixtures/**"]
+}

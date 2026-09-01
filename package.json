@@ -1,0 +1,53 @@
+{
+  "name": "kernel-zero",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Policy-first governance control plane and deterministic repository validator.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "benchmark:validator": "vite-node scripts/benchmark-validator.ts",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "contracts:check": "vite-node scripts/generate-contracts.ts --check",
+    "contracts:generate": "vite-node scripts/generate-contracts.ts",
+    "traceability:generate": "vite-node scripts/generate-traceability.ts",
+    "dev": "npm run dev --workspace @kernel-zero/control",
+    "lint": "eslint . --max-warnings 0",
+    "prisma:format": "prisma format --schema packages/persistence/prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema packages/persistence/prisma/schema.prisma",
+    "prisma:validate": "prisma validate --schema packages/persistence/prisma/schema.prisma",
+    "test": "npm run test:unit && npm run test:architecture",
+    "test:architecture": "vitest run --config vitest.config.ts tests/architecture",
+    "test:browser": "npm run build --workspace @kernel-zero/control && playwright test",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:unit": "vitest run --config vitest.config.ts packages apps",
+    "test:validator": "vitest run --config vitest.config.ts packages/validator",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "validator:self": "vite-node scripts/run-validator.ts -- validate --policy kernel-zero.policy.json --root . --workspace 00000000-0000-7000-8000-000000000000 --out .kernel-zero/evidence.json",
+    "verify": "npm run prisma:generate && npm run contracts:check && npm run check:architecture && npm run validator:self && npm run typecheck && npm run lint && npm run test:unit && npm run test:architecture"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^9.35.0",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.35.0",
+    "fast-check": "^4.3.0",
+    "globals": "^16.3.0",
+    "prisma": "^6.19.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^3.2.4"
+  }
+}
