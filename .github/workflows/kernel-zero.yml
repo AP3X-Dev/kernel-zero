@@ -33,6 +33,8 @@ jobs:
           path: .kernel-zero/evidence.json
           retention-days: 14
       - run: npm run prisma:validate
+        env:
+          DATABASE_URL: postgresql://kernel_zero:kernel_zero@127.0.0.1:5432/kernel_zero
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:unit
