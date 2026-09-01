@@ -7,6 +7,11 @@ import {
   type EvidenceFinding,
 } from "@kernel-zero/contracts";
 import {
+  ManifestEvidenceSchema,
+  checkManifest,
+  type ManifestPolicy,
+} from "@kernel-zero/profile-manifest";
+import {
   findingMessage,
   type FindingMessageCode,
   type RepositoryEvidence,
@@ -211,6 +216,35 @@ describe("EvidenceService", () => {
     const service = new EvidenceService(repository);
     await expect(service.submit(submission(evidence({ generatedAt: "2026-08-31T12:15:00.000Z" })), now)).resolves.toMatchObject({ kind: "created" });
     await expect(service.submit(submission(evidence({ generatedAt: "2026-08-31T12:15:00.001Z" })), now)).rejects.toMatchObject({ reason: "generated_at_future" });
+  });
+
+  it("accepts manifest-profile evidence with no kernel changes", async () => {
+    const manifestPolicy: ManifestPolicy = {
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "ManifestPolicy",
+      metadata: { description: "Manifest rules", name: "manifest-hygiene", revision: 1 },
+      rules: [{ check: { fields: ["dependencies"], kind: "pinned-dependencies" }, id: "pin-deps", level: "error", remediation: "Pin exact versions.", title: "Pinned dependencies" }],
+    };
+    const findings = checkManifest({ manifest: { dependencies: { zod: "^4.1.0" } }, path: "package.json", policy: manifestPolicy, policyDigest: digest });
+    const base = {
+      apiVersion: "kernel-zero.dev/evidence/v1" as const,
+      exceptionBundleDigest: null,
+      findings: [...findings],
+      generatedAt: now.toISOString(),
+      kind: "ManifestEvidence" as const,
+      policy: { digest, name: manifestPolicy.metadata.name, revision: manifestPolicy.metadata.revision },
+      result: { ...deriveEvidenceSummary(findings, 1), durationMs: 0 },
+      runId,
+      signature: null,
+      subject: { manifestDigest, repository: "example/service", revision: "git:abc123" },
+      tool: { name: "kernel-zero-manifest" as const, version: "0.1.0" },
+      workspace: workspaceId,
+    };
+    const document = ManifestEvidenceSchema.parse({ ...base, integrity: { algorithm: "sha256", digest: canonicalEvidenceDigest(base) } });
+
+    const repository = new MemoryRepository();
+    repository.policy = { digest, document: manifestPolicy, state: "approved" };
+    await expect(new EvidenceService(repository).submit(submission(document), now)).resolves.toMatchObject({ kind: "created" });
   });
 
   it("maps repository create, duplicate, and digest-conflict outcomes", async () => {

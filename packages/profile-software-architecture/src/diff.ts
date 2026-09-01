@@ -3,6 +3,7 @@ import { canonicalJson } from "@kernel-zero/domain";
 
 import type { RepositoryPolicy } from "./policy";
 
+// ponytail: duplicated in profile-manifest/src/index.ts; lift to contracts as diffRulesById when a third profile needs it
 export function diffPolicyRules(before: RepositoryPolicy, after: RepositoryPolicy): readonly PolicyRuleDiff[] {
   const left = new Map(before.rules.map((rule) => [rule.id, rule]));
   const right = new Map(after.rules.map((rule) => [rule.id, rule]));

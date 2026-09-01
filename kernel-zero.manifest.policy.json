@@ -1,0 +1,31 @@
+{
+  "apiVersion": "kernel-zero.dev/v1",
+  "kind": "ManifestPolicy",
+  "metadata": {
+    "name": "kernel-zero-manifest-policy",
+    "revision": 1,
+    "description": "Deterministic manifest hygiene rules for the KERNEL ZERO repository."
+  },
+  "rules": [
+    {
+      "id": "license-allowlist",
+      "title": "Allowed licenses",
+      "level": "error",
+      "check": {
+        "kind": "allowed-licenses",
+        "allowed": ["MIT"]
+      },
+      "remediation": "Publish the package under an approved license."
+    },
+    {
+      "id": "pin-deps",
+      "title": "Pinned dependencies",
+      "level": "error",
+      "check": {
+        "kind": "pinned-dependencies",
+        "fields": ["dependencies"]
+      },
+      "remediation": "Pin every runtime dependency to an exact version."
+    }
+  ]
+}
