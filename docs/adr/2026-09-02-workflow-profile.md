@@ -53,8 +53,13 @@ with no change to `packages/domain`, `packages/contracts`, or
   I/O; the runner script owns all file reads, so the checker stays pure.
 - **Location.** The finding `path` is the workflow file path relative to the
   repository root with forward slashes. The location is the line of the offending
-  `uses:` or top-level `permissions:` when a plain line search finds it, otherwise
-  line 1 column 1.
+  `uses:` or `permissions:` when a plain line search finds it, otherwise line 1
+  column 1. Refinement of the brief: a `PERMISSION_TOO_BROAD` finding for a named
+  scope points at that scope's own line (`  contents: write`) and falls back to
+  the top-level `permissions:` line, because two scopes of one workflow would
+  otherwise share a location and their order in the evidence would fall through to
+  the opaque identity tie-break in `sortFindings`. Column is always 1; the line is
+  the unit of review here.
 - **Self policy.** `kernel-zero.workflow.policy.json` uses `pinned-actions` in
   `tag` mode and `restricted-permissions` with `allowWrite: []`, both at
   `level: "error"`. This repository's workflow uses `@v4` tags and

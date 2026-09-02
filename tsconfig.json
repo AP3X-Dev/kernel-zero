@@ -10,6 +10,7 @@
       "@kernel-zero/persistence": ["packages/persistence/src/index.ts"],
       "@kernel-zero/profile-manifest": ["packages/profile-manifest/src/index.ts"],
       "@kernel-zero/profile-software-architecture": ["packages/profile-software-architecture/src/index.ts"],
+      "@kernel-zero/profile-workflow": ["packages/profile-workflow/src/index.ts"],
       "@kernel-zero/profiles": ["packages/profiles/src/index.ts"],
       "@kernel-zero/testing": ["packages/testing/src/index.ts"],
       "@kernel-zero/validator": ["packages/validator/src/index.ts"]

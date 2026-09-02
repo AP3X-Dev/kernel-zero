@@ -10,6 +10,7 @@ and each installed package's license files.
 | `@eslint/js` | 9.39.5 | MIT |
 | `@playwright/test` | 1.62.1 | Apache-2.0 |
 | `@prisma/client` | 6.19.3 | Apache-2.0 |
+| `@types/js-yaml` | 4.0.9 | MIT |
 | `@types/node` | 22.20.1 | MIT |
 | `@types/react` | 19.2.18 | MIT |
 | `@types/react-dom` | 19.2.5 | MIT |
@@ -19,6 +20,7 @@ and each installed package's license files.
 | `eslint` | 9.39.5 | MIT |
 | `fast-check` | 4.9.0 | MIT |
 | `globals` | 16.5.0 | MIT |
+| `js-yaml` | 4.3.2 | MIT |
 | `next` | 16.3.3 | MIT |
 | `prisma` | 6.19.3 | Apache-2.0 |
 | `react` | 19.2.8 | MIT |

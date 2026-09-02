@@ -11,6 +11,7 @@ const workspaces = Object.freeze({
   "@kernel-zero/persistence": "packages/persistence",
   "@kernel-zero/profile-manifest": "packages/profile-manifest",
   "@kernel-zero/profile-software-architecture": "packages/profile-software-architecture",
+  "@kernel-zero/profile-workflow": "packages/profile-workflow",
   "@kernel-zero/profiles": "packages/profiles",
   "@kernel-zero/testing": "packages/testing",
   "@kernel-zero/validator": "packages/validator",
@@ -37,10 +38,15 @@ const allowedWorkspaceDependencies = Object.freeze({
     "@kernel-zero/contracts",
     "@kernel-zero/domain",
   ]),
+  "@kernel-zero/profile-workflow": new Set([
+    "@kernel-zero/contracts",
+    "@kernel-zero/domain",
+  ]),
   "@kernel-zero/profiles": new Set([
     "@kernel-zero/contracts",
     "@kernel-zero/profile-manifest",
     "@kernel-zero/profile-software-architecture",
+    "@kernel-zero/profile-workflow",
   ]),
   "@kernel-zero/testing": new Set([
     "@kernel-zero/contracts",

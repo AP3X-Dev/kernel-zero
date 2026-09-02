@@ -7,6 +7,7 @@
   "dependencies": {
     "@kernel-zero/contracts": "*",
     "@kernel-zero/profile-manifest": "*",
-    "@kernel-zero/profile-software-architecture": "*"
+    "@kernel-zero/profile-software-architecture": "*",
+    "@kernel-zero/profile-workflow": "*"
   }
 }

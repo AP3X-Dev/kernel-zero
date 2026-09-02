@@ -1,0 +1,34 @@
+{
+  "apiVersion": "kernel-zero.dev/v1",
+  "kind": "WorkflowPolicy",
+  "metadata": {
+    "name": "kernel-zero-workflow-policy",
+    "revision": 1,
+    "description": "Deterministic GitHub Actions workflow hygiene rules for the KERNEL ZERO repository."
+  },
+  "scope": {
+    "include": [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+  },
+  "rules": [
+    {
+      "id": "pinned-actions",
+      "title": "Actions are pinned",
+      "level": "error",
+      "check": {
+        "kind": "pinned-actions",
+        "mode": "tag"
+      },
+      "remediation": "Reference every action by an immutable ref; switch this rule to sha mode once every action is pinned to a commit."
+    },
+    {
+      "id": "least-privilege-permissions",
+      "title": "Least-privilege permissions",
+      "level": "error",
+      "check": {
+        "kind": "restricted-permissions",
+        "allowWrite": []
+      },
+      "remediation": "Declare top-level permissions and grant write only to scopes this policy lists."
+    }
+  ]
+}

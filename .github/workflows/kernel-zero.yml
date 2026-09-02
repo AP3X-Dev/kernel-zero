@@ -24,6 +24,8 @@ jobs:
       - run: npm run check:architecture
       - name: Validate repository policy
         run: npm run validator:self
+      - name: Validate workflow hygiene
+        run: npm run validator:workflow
       - name: Preserve deterministic evidence
         if: always()
         uses: actions/upload-artifact@v4

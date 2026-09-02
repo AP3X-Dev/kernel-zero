@@ -12,6 +12,11 @@ import {
   type ManifestPolicy,
 } from "@kernel-zero/profile-manifest";
 import {
+  WorkflowEvidenceSchema,
+  checkWorkflows,
+  type WorkflowPolicy,
+} from "@kernel-zero/profile-workflow";
+import {
   findingMessage,
   type FindingMessageCode,
   type RepositoryEvidence,
@@ -244,6 +249,41 @@ describe("EvidenceService", () => {
 
     const repository = new MemoryRepository();
     repository.policy = { digest, document: manifestPolicy, state: "approved" };
+    await expect(new EvidenceService(repository).submit(submission(document), now)).resolves.toMatchObject({ kind: "created" });
+  });
+
+  it("accepts workflow-profile evidence with no kernel changes", async () => {
+    const workflowPolicy: WorkflowPolicy = {
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "WorkflowPolicy",
+      metadata: { description: "Workflow rules", name: "workflow-hygiene", revision: 1 },
+      scope: { include: [".github/workflows/*.yml"] },
+      rules: [{ check: { kind: "pinned-actions", mode: "sha" }, id: "pinned-actions", level: "error", remediation: "Pin every action reference.", title: "Actions are pinned" }],
+    };
+    const findings = checkWorkflows({
+      files: [{ path: ".github/workflows/ci.yml", text: ["permissions:", "  contents: read", "jobs:", "  build:", "    steps:", "      - uses: actions/checkout@v4", ""].join("\n") }],
+      policy: workflowPolicy,
+      policyDigest: digest,
+    });
+    expect(findings.map((finding) => finding.messageCode)).toEqual(["ACTION_NOT_PINNED"]);
+    const base = {
+      apiVersion: "kernel-zero.dev/evidence/v1" as const,
+      exceptionBundleDigest: null,
+      findings: [...findings],
+      generatedAt: now.toISOString(),
+      kind: "WorkflowEvidence" as const,
+      policy: { digest, name: workflowPolicy.metadata.name, revision: workflowPolicy.metadata.revision },
+      result: { ...deriveEvidenceSummary(findings, 1), durationMs: 0 },
+      runId,
+      signature: null,
+      subject: { manifestDigest, repository: "example/service", revision: "git:abc123" },
+      tool: { name: "kernel-zero-workflow" as const, version: "0.1.0" },
+      workspace: workspaceId,
+    };
+    const document = WorkflowEvidenceSchema.parse({ ...base, integrity: { algorithm: "sha256", digest: canonicalEvidenceDigest(base) } });
+
+    const repository = new MemoryRepository();
+    repository.policy = { digest, document: workflowPolicy, state: "approved" };
     await expect(new EvidenceService(repository).submit(submission(document), now)).resolves.toMatchObject({ kind: "created" });
   });
 

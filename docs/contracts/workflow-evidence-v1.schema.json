@@ -1,0 +1,383 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "apiVersion": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "exceptionBundleDigest": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "findings": {
+      "$ref": "#/$defs/__schema3"
+    },
+    "generatedAt": {
+      "$ref": "#/$defs/__schema10"
+    },
+    "integrity": {
+      "$ref": "#/$defs/__schema11"
+    },
+    "kind": {
+      "$ref": "#/$defs/__schema12"
+    },
+    "policy": {
+      "$ref": "#/$defs/__schema13"
+    },
+    "result": {
+      "$ref": "#/$defs/__schema14"
+    },
+    "runId": {
+      "$ref": "#/$defs/__schema5"
+    },
+    "signature": {
+      "$ref": "#/$defs/__schema15"
+    },
+    "subject": {
+      "$ref": "#/$defs/__schema16"
+    },
+    "tool": {
+      "$ref": "#/$defs/__schema17"
+    },
+    "workspace": {
+      "$ref": "#/$defs/__schema5"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "exceptionBundleDigest",
+    "findings",
+    "generatedAt",
+    "integrity",
+    "kind",
+    "policy",
+    "result",
+    "runId",
+    "signature",
+    "subject",
+    "tool",
+    "workspace"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "const": "kernel-zero.dev/evidence/v1"
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/__schema2"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema2": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "__schema3": {
+      "maxItems": 5000,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema4"
+      }
+    },
+    "__schema4": {
+      "type": "object",
+      "properties": {
+        "exceptionId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema5"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fingerprint": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "id": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning"
+          ]
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "endColumn": {
+              "$ref": "#/$defs/__schema6"
+            },
+            "endLine": {
+              "$ref": "#/$defs/__schema7"
+            },
+            "startColumn": {
+              "$ref": "#/$defs/__schema8"
+            },
+            "startLine": {
+              "$ref": "#/$defs/__schema9"
+            }
+          },
+          "required": [
+            "endColumn",
+            "endLine",
+            "startColumn",
+            "startLine"
+          ],
+          "additionalProperties": false
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "messageCode": {
+          "type": "string",
+          "enum": [
+            "ACTION_NOT_PINNED",
+            "PARSE_FAILURE",
+            "PERMISSIONS_MISSING",
+            "PERMISSION_TOO_BROAD"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "ruleId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^[\\x20-\\x7e]+$"
+        }
+      },
+      "required": [
+        "exceptionId",
+        "fingerprint",
+        "id",
+        "level",
+        "location",
+        "message",
+        "messageCode",
+        "path",
+        "ruleId",
+        "subject"
+      ],
+      "additionalProperties": false
+    },
+    "__schema5": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "__schema6": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema7": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema8": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema9": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema10": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "__schema11": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "const": "sha256"
+        },
+        "digest": {
+          "$ref": "#/$defs/__schema2"
+        }
+      },
+      "required": [
+        "algorithm",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "__schema12": {
+      "type": "string",
+      "const": "WorkflowEvidence"
+    },
+    "__schema13": {
+      "type": "object",
+      "properties": {
+        "digest": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "digest",
+        "name",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "__schema14": {
+      "type": "object",
+      "properties": {
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "errors": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "excepted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "filesScanned": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "error",
+            "fail",
+            "pass"
+          ]
+        },
+        "warnings": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        }
+      },
+      "required": [
+        "durationMs",
+        "errors",
+        "excepted",
+        "filesScanned",
+        "status",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "__schema15": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "const": "ed25519"
+            },
+            "keyId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "value": {
+              "type": "string",
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+            }
+          },
+          "required": [
+            "algorithm",
+            "keyId",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema16": {
+      "type": "object",
+      "properties": {
+        "manifestDigest": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[\\x20-\\x7e]+$"
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[\\x20-\\x7e]+$"
+        }
+      },
+      "required": [
+        "manifestDigest",
+        "repository",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "__schema17": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "const": "kernel-zero-workflow"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

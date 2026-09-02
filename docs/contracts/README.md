@@ -27,3 +27,9 @@ Bundles contain opaque grant IDs and deterministic matching fields only. Grants 
 Media types: `application/vnd.kernel-zero.policy+json;version=1` (policy), `application/vnd.kernel-zero.evidence+json;version=1` (evidence) — the same two constants as RepositoryPolicy and RepositoryEvidence.
 
 The closed rule kinds are `allowed-licenses` and `pinned-dependencies`. The closed message codes are `LICENSE_NOT_ALLOWED`, `DEPENDENCY_NOT_PINNED`, and `PARSE_FAILURE`.
+
+## WorkflowPolicy v1 / WorkflowEvidence v1
+
+Media types: `application/vnd.kernel-zero.policy+json;version=1` (policy), `application/vnd.kernel-zero.evidence+json;version=1` (evidence) — the same two constants as RepositoryPolicy and RepositoryEvidence.
+
+GitHub Actions workflow hygiene. The closed rule kinds are `pinned-actions` (mode `sha` or `tag`) and `restricted-permissions` (an `allowWrite` scope list). The closed message codes are `ACTION_NOT_PINNED` (subject `action:<owner/repo@ref>`), `PERMISSIONS_MISSING` (subject `permissions:top-level`), `PERMISSION_TOO_BROAD` (subject `permissions:<scope>:<value>`), and `PARSE_FAILURE` (subject `parse`). Scope is `include` globs only, defaulting to `.github/workflows/*.yml` and `.github/workflows/*.yaml`.

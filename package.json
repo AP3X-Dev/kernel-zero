@@ -35,7 +35,8 @@
     "validator:manifest": "vite-node scripts/run-manifest-validator.ts -- kernel-zero.manifest.policy.json . 00000000-0000-7000-8000-000000000000 .kernel-zero/manifest-evidence.json",
     "validator:pack": "node -e \"require('fs').mkdirSync('dist',{recursive:true})\" && npm run build -w @kernel-zero/validator && npm pack -w @kernel-zero/validator --pack-destination dist",
     "validator:self": "vite-node scripts/run-validator.ts -- validate --policy kernel-zero.policy.json --root . --workspace 00000000-0000-7000-8000-000000000000 --out .kernel-zero/evidence.json",
-    "verify": "npm run prisma:generate && npm run contracts:check && npm run check:architecture && npm run validator:self && npm run typecheck && npm run lint && npm run test:unit && npm run test:architecture && npm run test:integration"
+    "validator:workflow": "vite-node scripts/run-workflow-validator.ts -- kernel-zero.workflow.policy.json . 00000000-0000-7000-8000-000000000000 .kernel-zero/workflow-evidence.json",
+    "verify": "npm run prisma:generate && npm run contracts:check && npm run check:architecture && npm run validator:self && npm run validator:workflow && npm run typecheck && npm run lint && npm run test:unit && npm run test:architecture && npm run test:integration"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

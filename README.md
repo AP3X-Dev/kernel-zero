@@ -57,6 +57,7 @@ runtime and the control plane never executes them against user input.
 | ------------------ | -------------------- | ----------------------- | ---------------------------------------- |
 | `RepositoryPolicy` | `RepositoryEvidence` | `kernel-zero-validator` | `packages/profile-software-architecture` |
 | `ManifestPolicy`   | `ManifestEvidence`   | `kernel-zero-manifest`  | `packages/profile-manifest`              |
+| `WorkflowPolicy`   | `WorkflowEvidence`   | `kernel-zero-workflow`  | `packages/profile-workflow`              |
 
 To add a profile: create `packages/profile-<name>` exporting a `Profile`, add it
 to `PROFILES`, and allow it in `scripts/check-architecture.mjs`. Kernel packages

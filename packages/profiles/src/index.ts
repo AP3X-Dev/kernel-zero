@@ -1,10 +1,12 @@
 import { PolicyEnvelopeSchema, type PolicyEnvelope, type Profile } from "@kernel-zero/contracts";
 import { manifestProfile } from "@kernel-zero/profile-manifest";
 import { softwareArchitectureProfile } from "@kernel-zero/profile-software-architecture";
+import { workflowProfile } from "@kernel-zero/profile-workflow";
 
 export const PROFILES: readonly Profile[] = Object.freeze([
   softwareArchitectureProfile,
   manifestProfile,
+  workflowProfile,
 ]);
 
 const byPolicyKind: ReadonlyMap<string, Profile> = new Map(PROFILES.map((profile) => [profile.policyKind, profile]));
