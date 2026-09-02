@@ -14,7 +14,7 @@ and each installed package's license files.
 | `@types/node` | 22.20.1 | MIT |
 | `@types/react` | 19.2.18 | MIT |
 | `@types/react-dom` | 19.2.5 | MIT |
-| `better-auth` | 1.7.2 | MIT |
+| `better-auth` | 1.6.30 | MIT |
 | `embedded-postgres` | 17.10.0-beta.17 | MIT |
 | `esbuild` | 0.28.2 | MIT |
 | `eslint` | 9.39.5 | MIT |
