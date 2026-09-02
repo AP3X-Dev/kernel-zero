@@ -41,5 +41,15 @@ jobs:
       - run: npm run test:architecture
       - run: npm run test:integration
       - run: npm run build
+      - run: npm run validator:pack
+      - name: Validate repository policy with the packed CLI
+        run: node packages/validator/dist/kernel-zero.js validate --policy kernel-zero.policy.json --root . --workspace 00000000-0000-7000-8000-000000000000 --out .kernel-zero/bundle-evidence.json
+      - name: Preserve validator tarball
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: kernel-zero-validator
+          path: dist/*.tgz
+          retention-days: 14
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser

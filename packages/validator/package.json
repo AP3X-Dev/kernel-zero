@@ -3,13 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "build": "tsc -p tsconfig.json" },
-  "bin": { "kernel-zero": "./dist/cli.js" },
-  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node22 --external:typescript --outfile=dist/kernel-zero.js"
+  },
+  "bin": {
+    "kernel-zero": "./dist/kernel-zero.js"
+  },
+  "files": ["dist"],
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "dependencies": {
+    "typescript": "^5.9.0"
+  },
+  "optionalDependencies": {
     "@kernel-zero/contracts": "*",
     "@kernel-zero/domain": "*",
-    "@kernel-zero/profile-software-architecture": "*",
-    "typescript": "^5.9.0"
+    "@kernel-zero/profile-software-architecture": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

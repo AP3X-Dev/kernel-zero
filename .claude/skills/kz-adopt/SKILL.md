@@ -10,7 +10,7 @@ Announce: "Using kz-adopt on <target repo>."
 Read `docs/validator-and-hooks.md` first; it is the source of every command below.
 
 1. Policy: copy `docs/contracts/examples/repository-policy-v1.json` as `kernel-zero.policy.json` in the target root. Adjust `scope.include` and `scope.exclude` to the target's layout. Keep every rule at `level: "error"` unless the owner says otherwise in writing.
-2. Validator: add `@kernel-zero/validator` as a dev dependency from the location the owner specifies (no registry publication exists; do not invent one). Its `bin` name is `kernel-zero`. Add the script:
+2. Validator: see "Installing in another repository" in `docs/validator-and-hooks.md`. Build the tarball with `npm run validator:pack` (writes `dist/kernel-zero-validator-0.1.0.tgz`) and add it as a dev dependency of the target repo with `npm install --save-dev <path-to-tarball> typescript@5` — no registry publication exists; do not invent one. Its `bin` name is `kernel-zero`. Add the script:
    `"validator:self": "kernel-zero validate --policy kernel-zero.policy.json --root . --workspace <workspace-uuid> --out .kernel-zero/evidence.json"`
    `--workspace` must be a lowercase UUIDv7.
 3. Prove it runs: `npm run validator:self`, expect exit 0, 1, or 2 and an `evidence.json`. Exit 2 means the run could not complete; fix that before continuing.

@@ -51,3 +51,35 @@ have a separate checker run validation from a clean checkout. Disposable
 worker orchestration and contributor adapters are intentionally outside this
 control-plane repository's product scope; this project supplies the contract,
 validator, evidence, hook, and CI gate they consume.
+
+## Installing in another repository
+
+The validator ships as a self-contained bundle so a consumer repository does
+not need this monorepo's workspace packages. The consumer-facing surface is
+the `kernel-zero` bin only; the package's `exports` field (`./src/index.ts`)
+is for in-workspace consumers of this repository and is not part of the
+packed tarball.
+
+From this repository, build and pack the tarball:
+
+```text
+npm run validator:pack
+```
+
+This writes `dist/kernel-zero-validator-0.1.0.tgz`. In the consumer
+repository, install it alongside `typescript` (the validator's only runtime
+dependency, kept external of the bundle):
+
+```text
+npm install --save-dev ./kernel-zero-validator-0.1.0.tgz typescript@5
+```
+
+Add a `validator:self` script that points at the consumer's own policy file,
+then wire it into `.githooks/pre-commit` the same way this repository does:
+
+```text
+"validator:self": "kernel-zero validate --policy kernel-zero.policy.json --root . --workspace <workspace-id> --out .kernel-zero/evidence.json"
+```
+
+There is no registry publication of `@kernel-zero/validator`; the tarball
+produced by `validator:pack` is the only distribution channel.

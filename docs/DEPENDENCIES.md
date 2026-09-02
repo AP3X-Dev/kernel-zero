@@ -15,6 +15,7 @@ and each installed package's license files.
 | `@types/react-dom` | 19.2.5 | MIT |
 | `better-auth` | 1.7.2 | MIT |
 | `embedded-postgres` | 17.10.0-beta.17 | MIT |
+| `esbuild` | 0.28.2 | MIT |
 | `eslint` | 9.39.5 | MIT |
 | `fast-check` | 4.9.0 | MIT |
 | `globals` | 16.5.0 | MIT |
