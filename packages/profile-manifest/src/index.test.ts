@@ -46,6 +46,22 @@ describe("manifestProfile", () => {
     expect(manifestFindingCompatibilityReason(policy, { ...licenseFinding, messageCode: "PARSE_FAILURE" })).toBe("rule_code_mismatch");
   });
 
+  it("refuses a forged violation naming a license the rule allows", () => {
+    const [licenseFinding] = checkManifest({ manifest: fixture("unpinned"), path: "package.json", policy, policyDigest: digest });
+    if (licenseFinding === undefined) throw new Error("Fixture must produce a finding.");
+    expect(licenseFinding.subject).toBe("license:GPL-3.0");
+    expect(manifestFindingCompatibilityReason(policy, licenseFinding)).toBeNull();
+    expect(manifestFindingCompatibilityReason(policy, { ...licenseFinding, subject: "license:MIT" })).toBe("rule_subject_mismatch");
+  });
+
+  it("refuses a parse failure claimed against a warning rule", () => {
+    const warningPolicy: ManifestPolicy = { ...policy, rules: policy.rules.map((rule) => ({ ...rule, level: "warning" as const })) };
+    const findings = checkManifest({ manifest: "not-an-object", path: "package.json", policy, policyDigest: digest });
+    const [parseFailure] = findings;
+    if (parseFailure === undefined) throw new Error("A non-object manifest must produce a parse failure.");
+    expect(manifestFindingCompatibilityReason(warningPolicy, { ...parseFailure, level: "warning" })).toBe("rule_code_mismatch");
+  });
+
   it("diffs rules by identifier", () => {
     const [licenseRule] = policy.rules;
     if (licenseRule === undefined) throw new Error("Policy must declare the license rule.");

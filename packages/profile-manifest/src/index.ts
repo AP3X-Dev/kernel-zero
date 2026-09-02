@@ -17,9 +17,13 @@ export function manifestFindingCompatibilityReason(policy: ManifestPolicy, findi
   const rule = policy.rules.find((candidate) => candidate.id === finding.ruleId);
   if (rule === undefined) return "rule_not_found";
   if (finding.level !== rule.level) return "rule_level_mismatch";
-  if (finding.messageCode === "PARSE_FAILURE") return finding.subject === "parse" ? null : "rule_code_mismatch";
+  if (finding.messageCode === "PARSE_FAILURE") return rule.level === "error" && finding.subject === "parse" ? null : "rule_code_mismatch";
   if (finding.messageCode !== messageCodeByKind[rule.check.kind]) return "rule_code_mismatch";
-  if (rule.check.kind === "allowed-licenses") return finding.subject.startsWith("license:") ? null : "rule_subject_mismatch";
+  if (rule.check.kind === "allowed-licenses") {
+    const license = finding.subject.startsWith("license:") ? finding.subject.slice("license:".length) : null;
+    // An allowed license can never be the subject of a violation of its own rule.
+    return license !== null && !rule.check.allowed.includes(license) ? null : "rule_subject_mismatch";
+  }
   return rule.check.fields.some((field) => finding.subject.startsWith(`${field}:`)) ? null : "rule_subject_mismatch";
 }
 

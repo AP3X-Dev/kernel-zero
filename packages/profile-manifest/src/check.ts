@@ -13,7 +13,13 @@ export function checkManifest(input: Readonly<{
   policy: ManifestPolicy;
   policyDigest: Sha256Digest;
 }>): readonly EvidenceFinding[] {
-  const manifest = asRecord(input.manifest);
+  if (!isRecord(input.manifest)) {
+    // A manifest that is not an object cannot be judged by any rule, so report the parse failure the
+    // policy already declares; the kernel summary turns any PARSE_FAILURE into status "error".
+    const rule = input.policy.rules.find((candidate) => candidate.level === "error") ?? input.policy.rules[0];
+    return Object.freeze(rule === undefined ? [] : [finding(rule, "PARSE_FAILURE", "parse", input.path, input.policyDigest)]);
+  }
+  const manifest = input.manifest;
   const findings: EvidenceFinding[] = [];
   for (const rule of input.policy.rules) {
     for (const [messageCode, subject] of violations(rule, manifest)) {
@@ -54,6 +60,10 @@ function finding(rule: ManifestRule, messageCode: ManifestMessageCode, subject: 
   });
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  return isRecord(value) ? value : {};
 }

@@ -1,7 +1,13 @@
+import { deriveEvidenceSummary } from "@kernel-zero/contracts";
 import { describe, expect, it } from "vitest";
 
 import { checkManifest } from "./check";
+import { manifestFindingCompatibilityReason } from "./index";
 import type { ManifestPolicy } from "./policy";
+
+function unreachable(): never {
+  throw new Error("Expected at least one finding.");
+}
 
 const digest = `sha256:${"1".repeat(64)}` as const;
 const policy: ManifestPolicy = {
@@ -27,6 +33,17 @@ describe("checkManifest", () => {
       ["license-allowlist", "LICENSE_NOT_ALLOWED", "license:GPL-3.0"],
       ["pin-deps", "DEPENDENCY_NOT_PINNED", "dependencies:zod"],
     ]);
+  });
+
+  it("reports a single parse failure for a manifest that is not an object", () => {
+    for (const manifest of ["not-json-object", 42, null, ["dependencies"]]) {
+      const findings = checkManifest({ manifest, path: "package.json", policy, policyDigest: digest });
+      expect(findings.map((finding) => [finding.ruleId, finding.messageCode, finding.subject, finding.level])).toEqual([
+        ["license-allowlist", "PARSE_FAILURE", "parse", "error"],
+      ]);
+      expect(manifestFindingCompatibilityReason(policy, findings[0] ?? unreachable())).toBeNull();
+      expect(deriveEvidenceSummary(findings, 1).status).toBe("error");
+    }
   });
 
   it("is deterministic across key order", () => {
