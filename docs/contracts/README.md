@@ -21,3 +21,9 @@ Evidence contains normalized findings and repository metadata, never source. The
 Media type: `application/vnd.kernel-zero.exceptions+json;version=1`
 
 Bundles contain opaque grant IDs and deterministic matching fields only. Grants are sorted by exception ID. Lifetime is at most 24 hours and never extends a grant. Integrity omits `integrity` and `signature`; an Ed25519 signature covers the raw 32-byte SHA-256 digest.
+
+## ManifestPolicy v1 / ManifestEvidence v1
+
+Media types: `application/vnd.kernel-zero.policy+json;version=1` (policy), `application/vnd.kernel-zero.evidence+json;version=1` (evidence) — the same two constants as RepositoryPolicy and RepositoryEvidence.
+
+The closed rule kinds are `allowed-licenses` and `pinned-dependencies`. The closed message codes are `LICENSE_NOT_ALLOWED`, `DEPENDENCY_NOT_PINNED`, and `PARSE_FAILURE`.

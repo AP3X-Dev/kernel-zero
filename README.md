@@ -46,6 +46,23 @@ examples. The validator never uploads repository source.
 - External publication, pull-request creation, merge, deployment, and
   production credential use require separate human approval.
 
+## Profiles
+
+The kernel parses only policy and evidence envelopes. A profile owns the full
+policy schema, the evidence schema, finding compatibility, and rule diffing,
+and is registered at build time in `packages/profiles`. Profiles never load at
+runtime and the control plane never executes them against user input.
+
+| Policy kind        | Evidence kind        | Tool                    | Package                                  |
+| ------------------ | -------------------- | ----------------------- | ---------------------------------------- |
+| `RepositoryPolicy` | `RepositoryEvidence` | `kernel-zero-validator` | `packages/profile-software-architecture` |
+| `ManifestPolicy`   | `ManifestEvidence`   | `kernel-zero-manifest`  | `packages/profile-manifest`              |
+
+To add a profile: create `packages/profile-<name>` exporting a `Profile`, add it
+to `PROFILES`, and allow it in `scripts/check-architecture.mjs`. Kernel packages
+may not import it; the self-policy rule `kernel-does-not-import-profiles`
+enforces that.
+
 ## License
 
 KERNEL ZERO is available under the [MIT License](LICENSE).
