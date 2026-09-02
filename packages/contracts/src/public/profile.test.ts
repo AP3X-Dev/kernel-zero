@@ -49,18 +49,55 @@ describe("diffRulesById", () => {
 });
 
 describe("policy and evidence envelopes", () => {
-  it("accepts any kind and ignores profile-owned fields", () => {
+  const rule = (extra: Record<string, unknown> = {}) =>
+    ({ id: "any-rule", level: "error", remediation: "Fix it.", title: "Any rule", ...extra });
+
+  it("accepts any kind and ignores profile-owned fields, keeping extra rule fields", () => {
     const result = PolicyEnvelopeSchema.safeParse({
       apiVersion: "kernel-zero.dev/v1",
       kind: "AnythingPolicy",
       metadata: { description: "x", name: "any-policy", revision: 1 },
-      rules: [{ id: "r" }],
+      rules: [rule({ check: { kind: "custom" } })],
     });
     expect(result.success).toBe(true);
+    expect(result.success && result.data.rules[0]).toMatchObject({ check: { kind: "custom" }, id: "any-rule" });
   });
 
   it("rejects a missing kind", () => {
-    expect(PolicyEnvelopeSchema.safeParse({ apiVersion: "kernel-zero.dev/v1", metadata: { description: "x", name: "any-policy", revision: 1 } }).success).toBe(false);
+    expect(PolicyEnvelopeSchema.safeParse({
+      apiVersion: "kernel-zero.dev/v1",
+      metadata: { description: "x", name: "any-policy", revision: 1 },
+      rules: [rule()],
+    }).success).toBe(false);
+  });
+
+  it("rejects a document without rules", () => {
+    const result = PolicyEnvelopeSchema.safeParse({
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "AnythingPolicy",
+      metadata: { description: "x", name: "any-policy", revision: 1 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty rules array", () => {
+    const result = PolicyEnvelopeSchema.safeParse({
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "AnythingPolicy",
+      metadata: { description: "x", name: "any-policy", revision: 1 },
+      rules: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a rule missing a required field", () => {
+    const result = PolicyEnvelopeSchema.safeParse({
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "AnythingPolicy",
+      metadata: { description: "x", name: "any-policy", revision: 1 },
+      rules: [{ id: "any-rule", level: "error", title: "Any rule" }],
+    });
+    expect(result.success).toBe(false);
   });
 
   it("reads the policy digest from evidence without knowing the profile", () => {

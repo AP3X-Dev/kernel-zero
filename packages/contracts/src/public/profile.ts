@@ -17,6 +17,12 @@ export const PolicyEnvelopeSchema = z.looseObject({
     revision: z.number().int().min(1),
     description: z.string().trim().min(1).max(500),
   }),
+  rules: z.array(z.looseObject({
+    id: SlugSchema(3, 80),
+    level: z.enum(["error", "warning"]),
+    remediation: z.string().trim().min(1).max(500),
+    title: z.string().trim().min(1).max(120),
+  })).min(1),
 });
 
 export type PolicyEnvelope = z.infer<typeof PolicyEnvelopeSchema>;

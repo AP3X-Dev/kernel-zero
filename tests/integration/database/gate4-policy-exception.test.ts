@@ -24,7 +24,7 @@ const document = (revision: number) => ({
   apiVersion: "kernel-zero.dev/v1" as const, kind: "RepositoryPolicy",
   metadata: { description: "Gate 4 database policy", name: "gate-four-policy", revision },
   scope: { exclude: [], include: ["packages/**/*.ts"], languages: ["typescript"] },
-  rules: [{ check: { allowTypeOnly: false, files: ["packages/**"], kind: "require-import", module: "server-only" }, id: "server-only-rule", level: "error", remediation: "Add the server-only marker.", title: "Server-only marker" }],
+  rules: [{ check: { allowTypeOnly: false, files: ["packages/**"], kind: "require-import", module: "server-only" }, id: "server-only-rule", level: "error" as const, remediation: "Add the server-only marker.", title: "Server-only marker" }],
 });
 
 describe("Gate 4 isolated PostgreSQL policy and exception authority", () => {

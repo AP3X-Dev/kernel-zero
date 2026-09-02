@@ -23,7 +23,6 @@ export type PolicyListItem = Readonly<{
 }>;
 
 export type PolicyDetailRule = Readonly<{
-  check: Readonly<{ kind: string }>;
   id: string;
   level: string;
   remediation: string;
@@ -279,6 +278,5 @@ function parsePolicy(value: string): PolicyEnvelope | null {
 }
 
 function policyRules(policy: PolicyEnvelope): readonly PolicyDetailRule[] {
-  const rules = (policy as { rules?: readonly PolicyDetailRule[] }).rules ?? [];
-  return Object.freeze(rules.map((rule) => Object.freeze(rule)));
+  return Object.freeze(policy.rules.map((rule) => Object.freeze({ id: rule.id, level: rule.level, remediation: rule.remediation, title: rule.title })));
 }

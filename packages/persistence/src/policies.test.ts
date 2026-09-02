@@ -13,7 +13,7 @@ const policy = (revision = 1) => ({
   apiVersion: "kernel-zero.dev/v1" as const, kind: "RepositoryPolicy",
   metadata: { name: "service-boundaries", revision, description: "Repository architecture rules" },
   scope: { languages: ["typescript"], include: ["apps/**/*.ts"], exclude: [] },
-  rules: [{ id: "rule-one", title: "Rule", level: "error", check: { kind: "require-import", files: ["apps/**"], module: "server-only", allowTypeOnly: false }, remediation: "Add the import." }],
+  rules: [{ id: "rule-one", title: "Rule", level: "error" as const, check: { kind: "require-import", files: ["apps/**"], module: "server-only", allowTypeOnly: false }, remediation: "Add the import." }],
 });
 
 function client(tx: object) { return { $transaction: vi.fn(async (operation) => operation(tx)) } as never; }
