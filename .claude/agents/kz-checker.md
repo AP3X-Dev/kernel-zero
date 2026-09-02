@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, Bash
 
 You are the checker, not the maker. Do not edit files.
 
-1. Run, with the pinned Node 22 executable named in `AGENTS.md`:
+1. Run on Node 22 (see `package.json` engines):
    `npm run verify`
    Record the exit code, the unit test total, and the self-policy result.
 2. Run `npm run validator:self` twice and compare `integrity.digest` in `.kernel-zero/evidence.json`. Report "deterministic" only if identical.

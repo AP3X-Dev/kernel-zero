@@ -13,19 +13,19 @@ The grill is not waivable. "It's two lines", "skip the grill", or "just do it" d
 
 ## Sources to open first
 
-- `AGENTS.md` (workspace rules and MemBerry tags)
-- `docs/superpowers/specs/2026-08-31-policy-foundry.md` (layering and request flow)
+- `README.md` ("Project boundaries", "Profiles")
+- `docs/validator-and-hooks.md`
 - `kernel-zero.policy.json` (self-policy rules)
 - `docs/TRACEABILITY.md` (FR-ID map)
 - `invariants.md` beside this file
 
 ## Decision tree
 
-1. **Which layer?** domain, contracts, persistence, validator, a profile package, control server, control UI, or scripts. If the answer spans more than two, ask which one owns the behaviour and which merely call it.
+1. **Which layer?** domain, contracts, persistence, validator, a profile package, control server, control UI, or scripts. If the answer spans more than two, ask which one owns the behaviour and which merely call it. State the current behaviour as it exists in the code before describing the change; a grill that starts from a wrong premise settles nothing.
 2. **Which invariant does this touch?** Walk `invariants.md` top to bottom. For each "yes", ask how the change keeps the invariant true and what test proves it.
 3. **Does a public contract change?** If yes: is it additive, does the canonical digest of existing artifacts change, and does `docs/contracts` get regenerated? A digest change is a breaking change; say so. Message codes and message strings are public contract but in different ways. Codes are compiled into the published evidence JSON schema (`createEvidenceSchema` closes `messageCode` to the declared keys) and feed `findingIdentity`, so a code change breaks fingerprints and orphans exception grants: ask for the grant-migration plan. Strings are not in the schema; they are enforced at runtime (`finding.message` must equal the profile's message for its code) and are part of every stored artifact's `integrity.digest`, so a string change makes every existing artifact fail re-validation and changes any committed fixture that carries a finding with that code (today only `docs/contracts/examples/repository-evidence-v1.json`; the manifest profile has no example, so a green `contracts:check` proves nothing about stored runs and must not be accepted as evidence of no contract impact).
-4. **Does this add data to an evidence run?** Then it goes in exactly one place: evidence `subject` (kernel strict object in `packages/contracts/src/public/evidence.ts` and `StoredEvidenceSchema` in `packages/contracts/src/public/profile.ts`; adding a key breaks every artifact digest), a finding `subject` string (feeds the fingerprint; profile-owned), or persistence only (invisible to the published artifact). Name which and why the other two are wrong. A profile- or vendor-specific concept never goes into a kernel schema or column.
-5. **Is this a new governed action?** If yes: capability, tenantScope, quota, audit code, idempotency, and transaction timeout, each stated explicitly (transaction timeout is required by `defineGovernedAction` even though the lint rule lists only five keys; ask for all six).
+4. **Does this add data to an evidence run?** Then it goes in exactly one place: evidence `subject` (kernel strict object in `packages/contracts/src/public/evidence.ts` and `StoredEvidenceSchema` in `packages/contracts/src/public/profile.ts`; subject is inside the digest composition, so a new key makes every stored artifact fail re-validation and changes the digest of every future one), a finding `subject` string (feeds the fingerprint; profile-owned), or persistence only (invisible to the published artifact). Name which and why the other two are wrong. A profile- or vendor-specific concept never goes into a kernel schema or column.
+5. **Is this a new governed action?** If yes: `audit`, `capability`, `idempotency`, `quota`, `tenantScope`, `transactionTimeoutMs`, each stated explicitly (`transactionTimeoutMs` is required by `defineGovernedAction` even though the lint rule lists only five keys; ask for all six).
 6. **Is this a new rule or a new rule kind?** A new kind means engine, schema, fixtures, compatibility, and benchmark. Confirm the engineer wants the larger scope.
 7. **Is this a new profile?** Confirm it can be expressed as a `Profile` with no kernel edits beyond registration. If not, the seam is being bent; stop and escalate. Also ask: does this put a profile-specific or vendor-specific concept (a cloud account, a language, a tool name) into a kernel package, schema, or table? That bends the seam without an import and is refused the same way.
 8. **What is the failure mode?** What happens on malformed input, on a missing policy, on a stale digest? "It throws" is not an answer; name the code and the exit code.

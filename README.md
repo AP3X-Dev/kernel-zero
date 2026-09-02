@@ -66,8 +66,9 @@ enforces that.
 ## Engineering skills
 
 Project skills live in `.claude/skills`: `kz-grill` (design interview, run first),
-`kz-governed-action`, `kz-policy-rule`, `kz-profile`, `kz-adopt`. After any builder
-skill reports done, run the `kz-checker` agent in `.claude/agents`. The full gate
+`kz-governed-action`, `kz-policy-rule`, `kz-profile`, `kz-adopt`. After
+`kz-governed-action`, `kz-policy-rule`, or `kz-profile` reports done, run the
+`kz-checker` agent in `.claude/agents`. The full gate
 is `npm run verify`; exit 0 is the only pass.
 
 ## License
