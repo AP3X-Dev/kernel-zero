@@ -13,7 +13,9 @@ import {
 import {
   REPOSITORY_POLICY_MEDIA_TYPE,
   findingMessage,
+  softwareArchitectureProfile,
 } from "@kernel-zero/profile-software-architecture";
+import { manifestMessages, manifestProfile } from "@kernel-zero/profile-manifest";
 import { PROFILES } from "@kernel-zero/profiles";
 
 const kebabCase = (kind: string): string => kind.replace(/(?<!^)[A-Z]/gu, (letter) => `-${letter}`).toLowerCase();
@@ -60,6 +62,49 @@ const evidenceBase = {
 };
 const evidenceExample = { ...evidenceBase, integrity: { algorithm: "sha256" as const, digest: canonicalEvidenceDigest(evidenceBase) } };
 
+const manifestPolicyExample = {
+  apiVersion: "kernel-zero.dev/v1",
+  kind: "ManifestPolicy",
+  metadata: { description: "Manifest license and pin rules", name: "manifest-hygiene", revision: 1 },
+  rules: [
+    {
+      check: { allowed: ["MIT", "Apache-2.0"], kind: "allowed-licenses" },
+      id: "allowed-license", level: "error", remediation: "Use an allowed license in package.json.", title: "License must be allowed",
+    },
+    {
+      check: { fields: ["dependencies"], kind: "pinned-dependencies" },
+      id: "pinned-dependencies", level: "error", remediation: "Pin dependency versions exactly.", title: "Dependencies must be pinned",
+    },
+  ],
+};
+const manifestLocation = { endColumn: 1, endLine: 1, startColumn: 1, startLine: 1 };
+const manifestFindingIdentity = findingIdentity({
+  location: manifestLocation, messageCode: "LICENSE_NOT_ALLOWED", path: "package.json",
+  policyDigest: digest("1"), ruleId: "allowed-license", subject: "license:GPL-3.0",
+});
+const manifestFinding = {
+  ...manifestFindingIdentity, exceptionId: null, level: "error" as const, location: manifestLocation,
+  message: manifestMessages.LICENSE_NOT_ALLOWED, messageCode: "LICENSE_NOT_ALLOWED" as const,
+  path: "package.json", ruleId: "allowed-license", subject: "license:GPL-3.0",
+};
+const manifestEvidenceBase = {
+  apiVersion: "kernel-zero.dev/evidence/v1" as const, exceptionBundleDigest: null,
+  findings: [manifestFinding], generatedAt: "2026-01-15T12:00:00.000Z",
+  kind: "ManifestEvidence" as const,
+  policy: { digest: digest("1"), name: "manifest-hygiene", revision: 1 },
+  result: { ...deriveEvidenceSummary([manifestFinding], 1), durationMs: 40 },
+  runId: "0195f000-0000-7000-8000-000000000001", signature: null,
+  subject: { manifestDigest: digest("1"), repository: "example/service", revision: "git:0123456789abcdef0123456789abcdef01234567" },
+  tool: { name: manifestProfile.toolName, version: "1.0.0" },
+  workspace: "0195f000-0000-7000-8000-000000000002",
+};
+const manifestEvidenceExample = { ...manifestEvidenceBase, integrity: { algorithm: "sha256" as const, digest: canonicalEvidenceDigest(manifestEvidenceBase) } };
+
+softwareArchitectureProfile.policySchema.parse(policyExample);
+softwareArchitectureProfile.evidenceSchema.parse(evidenceExample);
+manifestProfile.policySchema.parse(manifestPolicyExample);
+manifestProfile.evidenceSchema.parse(manifestEvidenceExample);
+
 const outputs = new Map<string, string>([
   ...PROFILES.flatMap((profile) => [
     [`docs/contracts/${kebabCase(profile.policyKind)}-v1.schema.json`, `${JSON.stringify(profile.policyJsonSchema(), null, 2)}\n`],
@@ -69,6 +114,8 @@ const outputs = new Map<string, string>([
   ["docs/contracts/examples/repository-policy-v1.json", `${canonicalJson(policyExample)}\n`],
   ["docs/contracts/examples/exception-grant-set-v1.json", `${canonicalJson(exceptionExample)}\n`],
   ["docs/contracts/examples/repository-evidence-v1.json", `${canonicalJson(evidenceExample)}\n`],
+  ["docs/contracts/examples/manifest-policy-v1.json", `${canonicalJson(manifestPolicyExample)}\n`],
+  ["docs/contracts/examples/manifest-evidence-v1.json", `${canonicalJson(manifestEvidenceExample)}\n`],
   ["docs/contracts/malformed/repository-policy-unknown-field.json", `${JSON.stringify({ ...policyExample, command: "npm test" }, null, 2)}\n`],
   ["docs/contracts/malformed/repository-policy-path-escape.json", `${JSON.stringify({ ...policyExample, scope: { ...policyExample.scope, include: ["../private.ts"] } }, null, 2)}\n`],
   ["docs/contracts/malformed/exception-grant-set-private-data.json", `${JSON.stringify({ ...exceptionExample, rationale: "must never be exported" }, null, 2)}\n`],
