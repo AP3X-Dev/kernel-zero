@@ -72,7 +72,7 @@ export class PolicyService {
   diff(before: unknown, after: unknown): readonly PolicyRuleDiff[] {
     const left = parsePolicyDocument(before);
     const right = parsePolicyDocument(after);
-    if (left === null || right === null) throw new Error("POLICY_PROFILE_MISMATCH");
+    if (left === null || right === null) throw new Error("POLICY_INVALID");
     if (left.profile !== right.profile) throw new Error("POLICY_PROFILE_MISMATCH");
     return left.profile.diffRules(left.policy, right.policy);
   }

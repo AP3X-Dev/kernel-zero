@@ -39,7 +39,6 @@ const allowedWorkspaceDependencies = Object.freeze({
   ]),
   "@kernel-zero/profiles": new Set([
     "@kernel-zero/contracts",
-    "@kernel-zero/domain",
     "@kernel-zero/profile-manifest",
     "@kernel-zero/profile-software-architecture",
   ]),

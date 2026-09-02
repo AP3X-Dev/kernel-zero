@@ -4,7 +4,7 @@ import { softwareArchitectureProfile } from "@kernel-zero/profile-software-archi
 
 export const PROFILES: readonly Profile[] = Object.freeze([
   softwareArchitectureProfile,
-  manifestProfile as Profile,
+  manifestProfile,
 ]);
 
 const byPolicyKind: ReadonlyMap<string, Profile> = new Map(PROFILES.map((profile) => [profile.policyKind, profile]));

@@ -60,8 +60,25 @@ describe("policy application service", () => {
     const service = new PolicyService({} as never, {} as never);
     const changed = { ...policyDocument, metadata: { ...policyDocument.metadata, revision: 2 }, rules: [{ ...policyDocument.rules[0], title: "Renamed" }] };
     expect(service.diff(policyDocument, changed)).toEqual([expect.objectContaining({ id: "server-only", status: "changed" })]);
-    expect(() => service.diff(policyDocument, { ...policyDocument, kind: "MysteryPolicy" })).toThrow("POLICY_PROFILE_MISMATCH");
-    expect(() => service.diff({ ...policyDocument, rules: [] }, policyDocument)).toThrow("POLICY_PROFILE_MISMATCH");
+    expect(() => service.diff(policyDocument, { ...policyDocument, kind: "MysteryPolicy" })).toThrow("POLICY_INVALID");
+    expect(() => service.diff({ ...policyDocument, rules: [] }, policyDocument)).toThrow("POLICY_INVALID");
+  });
+
+  it("refuses to diff documents that resolve to different profiles", () => {
+    const service = new PolicyService({} as never, {} as never);
+    const manifestDocument = {
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "ManifestPolicy",
+      metadata: { description: "Manifest rules", name: "manifest-hygiene", revision: 1 },
+      rules: [{
+        check: { allowed: ["MIT"], kind: "allowed-licenses" },
+        id: "license-allowlist",
+        level: "error",
+        remediation: "Use an approved license.",
+        title: "Allowed licenses",
+      }],
+    };
+    expect(() => service.diff(policyDocument, manifestDocument)).toThrow("POLICY_PROFILE_MISMATCH");
   });
 
   it("never advertises approval to the revision author", () => {
