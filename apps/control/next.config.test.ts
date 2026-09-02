@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import config from "./next.config";
+import config, { contentSecurityPolicy } from "./next.config";
 
 describe("control-plane response headers", () => {
   it("applies a restrictive baseline to every route without advertising the framework", async () => {
@@ -16,5 +16,12 @@ describe("control-plane response headers", () => {
     expect(headers.get("Referrer-Policy")).toBe("same-origin");
     expect(headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
+  it("allows eval only for the development runtime", () => {
+    expect(contentSecurityPolicy("development")).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval'");
+    expect(contentSecurityPolicy("production")).toContain("script-src 'self' 'unsafe-inline';");
+    expect(contentSecurityPolicy("production")).not.toContain("unsafe-eval");
+    expect(contentSecurityPolicy(undefined)).not.toContain("unsafe-eval");
   });
 });
