@@ -63,6 +63,13 @@ to `PROFILES`, and allow it in `scripts/check-architecture.mjs`. Kernel packages
 may not import it; the self-policy rule `kernel-does-not-import-profiles`
 enforces that.
 
+## Engineering skills
+
+Project skills live in `.claude/skills`: `kz-grill` (design interview, run first),
+`kz-governed-action`, `kz-policy-rule`, `kz-profile`, `kz-adopt`. After any builder
+skill reports done, run the `kz-checker` agent in `.claude/agents`. The full gate
+is `npm run verify`; exit 0 is the only pass.
+
 ## License
 
 KERNEL ZERO is available under the [MIT License](LICENSE).

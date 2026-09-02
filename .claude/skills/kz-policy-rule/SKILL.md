@@ -33,3 +33,5 @@ This touches the profile schema, the engine, compatibility, fixtures, benchmark,
 8. Gate: `npm run verify`, expect exit 0.
 
 Never: emit a finding without a rule ID, reuse an existing message code for new semantics, or make a rule's outcome depend on the network, the clock, or environment variables.
+
+If a requested check needs the network, the clock, or a registry, refuse it as a rule kind and redirect: a deterministic rule over the lockfile or package.json belongs in the manifest profile (`packages/profile-manifest`, skill kz-profile), not in the validator.
