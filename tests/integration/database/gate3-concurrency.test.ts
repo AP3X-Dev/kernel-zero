@@ -11,10 +11,7 @@ import {
 
 import { isolatedTestDatabaseUrl } from "./environment";
 
-const databaseEnabled = process.env.KERNEL_ZERO_RUN_DATABASE_TESTS === "1";
-const describeDatabase = databaseEnabled ? describe : describe.skip;
-
-describeDatabase("Gate 3 isolated PostgreSQL concurrency", () => {
+describe("Gate 3 isolated PostgreSQL concurrency", () => {
   let prisma: PersistenceClient;
   let actorUserId: string;
   let workspaceId: string;

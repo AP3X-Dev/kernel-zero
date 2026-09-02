@@ -18,8 +18,6 @@ import {
 
 import { isolatedTestDatabaseUrl } from "./environment";
 
-const databaseEnabled = process.env.KERNEL_ZERO_RUN_DATABASE_TESTS === "1";
-const describeDatabase = databaseEnabled ? describe : describe.skip;
 const correlationId = "0195f000-0000-7000-8000-000000000001";
 
 const document = (revision: number) => ({
@@ -29,7 +27,7 @@ const document = (revision: number) => ({
   rules: [{ check: { allowTypeOnly: false, files: ["packages/**"], kind: "require-import", module: "server-only" }, id: "server-only-rule", level: "error", remediation: "Add the server-only marker.", title: "Server-only marker" }],
 });
 
-describeDatabase("Gate 4 isolated PostgreSQL policy and exception authority", () => {
+describe("Gate 4 isolated PostgreSQL policy and exception authority", () => {
   let prisma: PersistenceClient;
   let authorId: string;
   let checkerId: string;

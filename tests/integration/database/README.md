@@ -1,7 +1,10 @@
 # Isolated PostgreSQL tests
 
-Database integration tests are opt-in. Set `KERNEL_ZERO_RUN_DATABASE_TESTS=1`
-and provide `TEST_DATABASE_URL` whose database or schema name contains `test`.
-The harness rejects production-shaped database targets before migrations or
+`npm run test:integration` runs the gate suites for real. When `TEST_DATABASE_URL`
+is set, it migrates and runs against that server. Otherwise `global-setup.ts`
+starts an embedded PostgreSQL server (via `embedded-postgres`) in
+`.kernel-zero/pg-test`, migrates it, and stops and deletes it afterward.
+Whichever database is used, its database or schema name must contain `test`
+— the harness rejects production-shaped database targets before migrations or
 fixtures can run. Tests must create UUIDv7 identifiers in application code and
 must never reuse the normal `DATABASE_URL` implicitly.
