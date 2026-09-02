@@ -36,12 +36,15 @@ export default async function globalSetup(): Promise<(() => Promise<void>) | und
   });
   await server.initialise();
   await server.start();
-  await server.createDatabase("kernel_zero_test");
-  const url = `postgresql://kernel_zero_test:kernel_zero_test@127.0.0.1:${String(PORT)}/kernel_zero_test`;
-  process.env.TEST_DATABASE_URL = url;
-  migrate(isolatedTestDatabaseUrl());
-  return async () => {
+  try {
+    await server.createDatabase("kernel_zero_test");
+    const url = `postgresql://kernel_zero_test:kernel_zero_test@127.0.0.1:${String(PORT)}/kernel_zero_test`;
+    process.env.TEST_DATABASE_URL = url;
+    migrate(isolatedTestDatabaseUrl());
+  } catch (error: unknown) {
+    // A failed migration must not leave a postgres process behind; stop() also removes the non-persistent data dir.
     await server.stop();
-    rmSync(DATA_DIR, { force: true, recursive: true });
-  };
+    throw error;
+  }
+  return () => server.stop();
 }
