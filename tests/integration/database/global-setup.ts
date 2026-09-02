@@ -13,6 +13,13 @@ const DATA_DIR = resolve(".kernel-zero", "pg-test");
 const SCHEMA = resolve("packages", "persistence", "prisma", "schema.prisma");
 const PRISMA_CLI = resolve("node_modules", "prisma", "build", "index.js");
 
+// Windows can keep the data directory open for a moment after shutdown; the next run clears it, so this is not a failure.
+function isDirectoryStillHeld(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const code = (error as { code?: unknown }).code;
+  return code === "EBUSY" || code === "ENOTEMPTY" || code === "EPERM";
+}
+
 function migrate(databaseUrl: string): void {
   execFileSync(process.execPath, [PRISMA_CLI, "migrate", "deploy", "--schema", SCHEMA], {
     env: { ...process.env, DATABASE_URL: databaseUrl },
@@ -46,5 +53,11 @@ export default async function globalSetup(): Promise<(() => Promise<void>) | und
     await server.stop();
     throw error;
   }
-  return () => server.stop();
+  return async () => {
+    try {
+      await server.stop();
+    } catch (error: unknown) {
+      if (!isDirectoryStillHeld(error)) throw error;
+    }
+  };
 }
