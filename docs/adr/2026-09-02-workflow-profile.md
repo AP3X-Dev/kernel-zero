@@ -81,7 +81,7 @@ with no change to `packages/domain`, `packages/contracts`, or
   the job id, which is a message-code-compatible but fingerprint-breaking change.
 - The line search is a plain scan of the raw text, not a YAML source map. A
   `uses:` value that appears on several lines is reported at the first one.
-- Job-level `uses:` — a reusable workflow call, `jobs.<id>.uses:` — is not judged,
+- Job-level `uses:` â€” a reusable workflow call, `jobs.<id>.uses:` â€” is not judged,
   only `jobs.<id>.steps[].uses:`. It is the same supply-chain surface; the brief
   scopes the rule to step uses, and the upgrade path is cheap because it needs no
   subject change, only the extra loop.
