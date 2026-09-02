@@ -1,5 +1,5 @@
 import type { EvidenceFinding, PolicyRuleDiff, Profile } from "@kernel-zero/contracts";
-import { canonicalJson } from "@kernel-zero/domain";
+import { diffRulesById } from "@kernel-zero/contracts";
 
 import { ManifestEvidenceSchema, manifestEvidenceJsonSchema, type ManifestEvidence } from "./evidence";
 import { ManifestPolicySchema, manifestPolicyJsonSchema, type ManifestPolicy } from "./policy";
@@ -27,19 +27,8 @@ export function manifestFindingCompatibilityReason(policy: ManifestPolicy, findi
   return rule.check.fields.some((field) => finding.subject.startsWith(`${field}:`)) ? null : "rule_subject_mismatch";
 }
 
-// ponytail: duplicated in profile-software-architecture/src/diff.ts; lift to contracts as diffRulesById when a third profile needs it
 export function diffManifestRules(before: ManifestPolicy, after: ManifestPolicy): readonly PolicyRuleDiff[] {
-  const left = new Map(before.rules.map((rule) => [rule.id, rule]));
-  const right = new Map(after.rules.map((rule) => [rule.id, rule]));
-  const result: PolicyRuleDiff[] = [];
-  for (const id of [...new Set([...left.keys(), ...right.keys()])].sort()) {
-    const beforeRule = left.get(id) ?? null;
-    const afterRule = right.get(id) ?? null;
-    if (beforeRule === null) result.push(Object.freeze({ after: afterRule, before: null, id, status: "added" }));
-    else if (afterRule === null) result.push(Object.freeze({ after: null, before: beforeRule, id, status: "removed" }));
-    else if (canonicalJson(beforeRule) !== canonicalJson(afterRule)) result.push(Object.freeze({ after: afterRule, before: beforeRule, id, status: "changed" }));
-  }
-  return Object.freeze(result);
+  return diffRulesById(before, after);
 }
 
 export const manifestProfile: Profile<ManifestPolicy, ManifestEvidence> = Object.freeze({

@@ -1,3 +1,4 @@
+import { canonicalJson } from "@kernel-zero/domain";
 import { z } from "zod";
 
 import {
@@ -54,6 +55,23 @@ export type PolicyRuleDiff = Readonly<{
   id: string;
   status: "added" | "changed" | "removed";
 }>;
+
+export function diffRulesById(
+  before: Readonly<{ rules: readonly Readonly<{ id: string }>[] }>,
+  after: Readonly<{ rules: readonly Readonly<{ id: string }>[] }>,
+): readonly PolicyRuleDiff[] {
+  const left = new Map(before.rules.map((rule) => [rule.id, rule]));
+  const right = new Map(after.rules.map((rule) => [rule.id, rule]));
+  const result: PolicyRuleDiff[] = [];
+  for (const id of [...new Set([...left.keys(), ...right.keys()])].sort()) {
+    const beforeRule = left.get(id) ?? null;
+    const afterRule = right.get(id) ?? null;
+    if (beforeRule === null) result.push(Object.freeze({ after: afterRule, before: null, id, status: "added" }));
+    else if (afterRule === null) result.push(Object.freeze({ after: null, before: beforeRule, id, status: "removed" }));
+    else if (canonicalJson(beforeRule) !== canonicalJson(afterRule)) result.push(Object.freeze({ after: afterRule, before: beforeRule, id, status: "changed" }));
+  }
+  return Object.freeze(result);
+}
 
 export type Profile<
   TPolicy extends PolicyEnvelope = PolicyEnvelope,

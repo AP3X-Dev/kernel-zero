@@ -1,7 +1,52 @@
 import { describe, expect, it } from "vitest";
 
+import { canonicalJson } from "@kernel-zero/domain";
+
 import { canonicalEvidenceDigest, createEvidenceSchema, deriveEvidenceSummary, findingIdentity } from "./evidence";
-import { EvidenceEnvelopeSchema, PolicyEnvelopeSchema } from "./profile";
+import { diffRulesById, EvidenceEnvelopeSchema, PolicyEnvelopeSchema } from "./profile";
+
+describe("diffRulesById", () => {
+  const rule = (id: string, extra: Record<string, unknown> = {}) => ({ id, ...extra });
+
+  it("reports added, removed, changed, and unchanged rules, sorted by id regardless of input order", () => {
+    const beforeB = rule("b", { level: "error" });
+    const afterA = rule("a", { level: "warning" });
+    const afterC = rule("c", { level: "error" });
+    const afterB = rule("b", { level: "warning" });
+    const before = { rules: [beforeB, afterA] };
+    const after = { rules: [afterA, afterC, afterB] };
+
+    const diff = diffRulesById(before, after);
+
+    expect(diff).toEqual([
+      { after: afterB, before: beforeB, id: "b", status: "changed" },
+      { after: afterC, before: null, id: "c", status: "added" },
+    ]);
+  });
+
+  it("omits unchanged rules and reports removals", () => {
+    const ruleZ = rule("z");
+    const before = { rules: [rule("a"), ruleZ] };
+    const after = { rules: [rule("a")] };
+
+    expect(diffRulesById(before, after)).toEqual([{ after: null, before: ruleZ, id: "z", status: "removed" }]);
+  });
+
+  it("compares rules by canonicalJson, ignoring key order", () => {
+    const beforeRule = { id: "a", level: "error", scope: "x" };
+    const afterRule = { level: "error", id: "a", scope: "x" };
+    expect(canonicalJson(beforeRule)).toBe(canonicalJson(afterRule));
+
+    expect(diffRulesById({ rules: [beforeRule] }, { rules: [afterRule] })).toEqual([]);
+  });
+
+  it("freezes the result and each entry", () => {
+    const diff = diffRulesById({ rules: [rule("a")] }, { rules: [] });
+
+    expect(Object.isFrozen(diff)).toBe(true);
+    expect(Object.isFrozen(diff[0])).toBe(true);
+  });
+});
 
 describe("policy and evidence envelopes", () => {
   it("accepts any kind and ignores profile-owned fields", () => {
