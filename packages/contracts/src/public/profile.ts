@@ -18,6 +18,7 @@ export const PolicyEnvelopeSchema = z.looseObject({
     description: z.string().trim().min(1).max(500),
   }),
   rules: z.array(z.looseObject({
+    check: z.looseObject({ kind: z.string().min(1).max(64) }),
     id: SlugSchema(3, 80),
     level: z.enum(["error", "warning"]),
     remediation: z.string().trim().min(1).max(500),

@@ -50,7 +50,16 @@ describe("diffRulesById", () => {
 
 describe("policy and evidence envelopes", () => {
   const rule = (extra: Record<string, unknown> = {}) =>
-    ({ id: "any-rule", level: "error", remediation: "Fix it.", title: "Any rule", ...extra });
+    ({ check: { kind: "any-check" }, id: "any-rule", level: "error", remediation: "Fix it.", title: "Any rule", ...extra });
+
+  it("rejects a rule without a check kind", () => {
+    expect(PolicyEnvelopeSchema.safeParse({
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "AnythingPolicy",
+      metadata: { description: "x", name: "any-policy", revision: 1 },
+      rules: [rule({ check: {} })],
+    }).success).toBe(false);
+  });
 
   it("accepts any kind and ignores profile-owned fields, keeping extra rule fields", () => {
     const result = PolicyEnvelopeSchema.safeParse({

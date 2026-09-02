@@ -23,7 +23,7 @@ export default async function PolicyPage({ params }: PolicyPageProps) {
           {policy.document === null ? <li>No valid repository policy document is available for the latest revision.</li> : policy.rules.map((rule) => (
             <li className="row-card" key={rule.id}>
               <dl><dt>Rule</dt><dd>{rule.title}<br /><span className="muted">{rule.remediation}</span></dd></dl>
-              <dl><dt>Level</dt><dd>{rule.level}</dd></dl>
+              <dl><dt>Check</dt><dd>{rule.checkKind} · {rule.level}</dd></dl>
               <dl><dt>Action</dt><dd>Read only</dd></dl>
             </li>
           ))}
