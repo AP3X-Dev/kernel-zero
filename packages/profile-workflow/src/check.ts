@@ -9,6 +9,14 @@ import type { WorkflowPolicy, WorkflowRule } from "./policy";
 const WHOLE_FILE: FindingLocation = Object.freeze({ endColumn: 1, endLine: 1, startColumn: 1, startLine: 1 });
 const COMMIT_SHA = /^[0-9a-f]{40}$/u;
 
+/** Does `owner/repo[/path]@ref` satisfy this mode? Shared so compatibility cannot drift from detection. */
+export function acceptsReference(mode: "sha" | "tag", reference: string): boolean {
+  const at = reference.lastIndexOf("@");
+  const ref = at === -1 ? "" : reference.slice(at + 1);
+  // Git prints commit shas in lowercase hex; an uppercase ref is not accepted as pinned.
+  return mode === "sha" ? COMMIT_SHA.test(ref) : ref.length > 0;
+}
+
 /** The narrow view of a workflow this profile judges; every other key stays untouched. */
 const WorkflowDocumentSchema = z.looseObject({
   // ponytail: job-level permissions are read but not judged, because the finding subject has no job
@@ -63,15 +71,14 @@ function parseWorkflow(text: string): WorkflowDocument | null {
 function* violations(rule: WorkflowRule, document: WorkflowDocument): Generator<Violation> {
   if (rule.check.kind === "pinned-actions") {
     for (const job of Object.values(document.jobs ?? {})) {
+      // ponytail: only step uses are judged; a job-level `uses:` (a reusable workflow call) is
+      // invisible to this rule. The upgrade path needs no subject change, only this loop.
       for (const step of job.steps ?? []) {
         const reference = step.uses?.trim();
         // Local composite actions and docker images carry no action reference this rule can judge.
         // ponytail: docker digests are unjudged; the upgrade path is a "docker-digest" mode.
         if (reference === undefined || reference.startsWith("./") || reference.startsWith("docker://")) continue;
-        const at = reference.lastIndexOf("@");
-        const ref = at === -1 ? "" : reference.slice(at + 1);
-        const pinned = rule.check.mode === "sha" ? COMMIT_SHA.test(ref) : ref.length > 0;
-        if (!pinned) yield { anchors: [reference], messageCode: "ACTION_NOT_PINNED", subject: `action:${reference}` };
+        if (!acceptsReference(rule.check.mode, reference)) yield { anchors: [reference], messageCode: "ACTION_NOT_PINNED", subject: `action:${reference}` };
       }
     }
     return;
@@ -126,7 +133,11 @@ function finding(
   });
 }
 
-/** Subjects quote workflow text, so they are clamped to the printable, bounded shape evidence allows. */
+/**
+ * Subjects quote workflow text, so they are clamped to the printable, bounded shape evidence allows.
+ * This exists for the schema bound, not for looks: without it a pathological `uses:` value makes the
+ * runner throw at `WorkflowEvidenceSchema.parse` and exit 2 on an otherwise valid repository.
+ */
 function safeSubject(subject: string): string {
   return subject.replace(/[^\x20-\x7e]/gu, "?").slice(0, 200);
 }

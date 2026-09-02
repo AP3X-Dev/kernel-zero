@@ -1,14 +1,13 @@
 import type { EvidenceFinding, PolicyRuleDiff, Profile } from "@kernel-zero/contracts";
 import { diffRulesById } from "@kernel-zero/contracts";
 
+import { acceptsReference } from "./check";
 import { WorkflowEvidenceSchema, workflowEvidenceJsonSchema, type WorkflowEvidence } from "./evidence";
 import { WorkflowPolicySchema, workflowPolicyJsonSchema, type WorkflowPolicy } from "./policy";
 
 export * from "./check";
 export * from "./evidence";
 export * from "./policy";
-
-const COMMIT_SHA = /^[0-9a-f]{40}$/u;
 
 const messageCodesByKind: Readonly<Record<"pinned-actions" | "restricted-permissions", readonly string[]>> = Object.freeze({
   "pinned-actions": Object.freeze(["ACTION_NOT_PINNED"]),
@@ -29,11 +28,8 @@ export function workflowFindingCompatibilityReason(policy: WorkflowPolicy, findi
   if (!finding.subject.startsWith(subjectPrefixByKind[rule.check.kind])) return "rule_subject_mismatch";
   if (rule.check.kind === "pinned-actions") {
     const reference = finding.subject.slice("action:".length);
-    const at = reference.lastIndexOf("@");
-    const ref = at === -1 ? "" : reference.slice(at + 1);
     // A reference the rule already accepts can never be the subject of violating it.
-    const accepted = rule.check.mode === "sha" ? COMMIT_SHA.test(ref) : ref.length > 0;
-    return reference.length > 0 && !accepted ? null : "rule_subject_mismatch";
+    return reference.length > 0 && !acceptsReference(rule.check.mode, reference) ? null : "rule_subject_mismatch";
   }
   if (finding.messageCode === "PERMISSIONS_MISSING") return finding.subject === "permissions:top-level" ? null : "rule_subject_mismatch";
   const [, scope, value] = finding.subject.split(":");

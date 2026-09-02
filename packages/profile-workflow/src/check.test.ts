@@ -66,6 +66,12 @@ describe("checkWorkflows", () => {
     expect(reported(bare, policyWith("tag"))).toEqual([["pinned-actions", "ACTION_NOT_PINNED", "action:actions/checkout"]]);
   });
 
+  it("refuses an uppercase 40-hex ref, because commit shas are lowercase hex", () => {
+    const text = pinned.replace(`actions/checkout@${sha}`, `actions/checkout@${sha.toUpperCase()}`);
+    expect(reported(text)).toEqual([["pinned-actions", "ACTION_NOT_PINNED", `action:actions/checkout@${sha.toUpperCase()}`]]);
+    expect(reported(text, policyWith("tag"))).toEqual([]);
+  });
+
   it("skips local and docker action references in both modes", () => {
     for (const uses of ["./.github/actions/setup", "docker://alpine:3.20"]) {
       const text = pinned.replace(`actions/checkout@${sha}`, uses);
@@ -111,10 +117,13 @@ describe("checkWorkflows", () => {
   });
 
   it("is deterministic across key order and reports each file", () => {
-    const a = check("permissions:\n  issues: write\n  contents: write\njobs: {}\n");
-    const b = check("permissions:\n  contents: write\n  issues: write\njobs: {}\n");
-    expect(a.map((finding) => finding.subject).sort()).toEqual(b.map((finding) => finding.subject).sort());
-    expect(a.map((finding) => finding.subject).sort()).toEqual(["permissions:contents:write", "permissions:issues:write"]);
+    // Flow mappings keep both scopes on one line, so only the parsed key order differs; a block
+    // mapping would move lines, and findings are ordered by line on purpose.
+    const a = check("permissions: {issues: write, contents: write}\njobs: {}\n");
+    const b = check("permissions: {contents: write, issues: write}\njobs: {}\n");
+    expect(a.map((finding) => finding.subject)).toEqual(b.map((finding) => finding.subject));
+    expect(a.map((finding) => finding.id)).toEqual(b.map((finding) => finding.id));
+    expect([...a].map((finding) => finding.subject).sort()).toEqual(["permissions:contents:write", "permissions:issues:write"]);
 
     const both = checkWorkflows({
       files: [

@@ -36,7 +36,9 @@ with no change to `packages/domain`, `packages/contracts`, or
 - **Rule kinds (closed).**
   - `pinned-actions` `{ kind, mode: "sha" | "tag" }`. Every step `uses:` of the
     form `owner/repo[/path]@ref` must carry a 40-hex `ref` in `sha` mode, or any
-    non-empty `ref` in `tag` mode. `./local` and `docker://` uses are skipped.
+    non-empty `ref` in `tag` mode. The hex is lowercase: git prints commit shas in
+    lowercase, so an uppercase 40-hex `ref` is not accepted as pinned, which is the
+    fail-closed direction. `./local` and `docker://` uses are skipped.
   - `restricted-permissions` `{ kind, allowWrite: string[] }`. Every workflow
     must declare top-level `permissions`; `write-all` is always a finding; any
     scope whose value is `write` and which is not listed in `allowWrite` is a
@@ -79,6 +81,10 @@ with no change to `packages/domain`, `packages/contracts`, or
   the job id, which is a message-code-compatible but fingerprint-breaking change.
 - The line search is a plain scan of the raw text, not a YAML source map. A
   `uses:` value that appears on several lines is reported at the first one.
+- Job-level `uses:` — a reusable workflow call, `jobs.<id>.uses:` — is not judged,
+  only `jobs.<id>.steps[].uses:`. It is the same supply-chain surface; the brief
+  scopes the rule to step uses, and the upgrade path is cheap because it needs no
+  subject change, only the extra loop.
 
 ## Invariants touched
 

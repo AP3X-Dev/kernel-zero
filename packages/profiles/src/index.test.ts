@@ -26,6 +26,7 @@ describe("profile registry", () => {
   it("resolves a profile by policy kind and refuses unknown kinds", () => {
     expect(profileForPolicyKind("RepositoryPolicy")?.toolName).toBe("kernel-zero-validator");
     expect(profileForPolicyKind("ManifestPolicy")?.toolName).toBe("kernel-zero-manifest");
+    expect(profileForPolicyKind("WorkflowPolicy")?.toolName).toBe("kernel-zero-workflow");
     expect(profileForPolicyKind("NopePolicy")).toBeNull();
   });
 

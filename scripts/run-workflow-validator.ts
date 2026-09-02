@@ -1,5 +1,5 @@
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, type Dirent } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 import { canonicalEvidenceDigest, deriveEvidenceSummary } from "@kernel-zero/contracts";
 import { canonicalSha256, generateUuidV7 } from "@kernel-zero/domain";
@@ -19,6 +19,29 @@ function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${expression}$`, "u");
 }
 
+/** A glob whose first segment is a wildcard scans from the root, so the walk never descends into build or history directories. */
+function listFiles(directory: string): readonly string[] {
+  const files: string[] = [];
+  const pending = [directory];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === undefined) continue;
+    let entries: readonly Dirent[] = [];
+    try {
+      entries = readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name === ".git") continue;
+      const absolute = join(current, entry.name);
+      if (entry.isDirectory()) pending.push(absolute);
+      else if (entry.isFile()) files.push(absolute);
+    }
+  }
+  return files;
+}
+
 function collectWorkflows(root: string, include: readonly string[]): readonly WorkflowFile[] {
   const patterns = include.map(globToRegExp);
   const directories = new Set(include.map((glob) => {
@@ -29,15 +52,7 @@ function collectWorkflows(root: string, include: readonly string[]): readonly Wo
 
   const paths = new Set<string>();
   for (const directory of directories) {
-    let entries: readonly { name: string; parentPath: string; isFile(): boolean }[] = [];
-    try {
-      entries = readdirSync(resolve(root, directory), { recursive: true, withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      const absolute = resolve(entry.parentPath, entry.name);
+    for (const absolute of listFiles(resolve(root, directory))) {
       const relative = absolute.slice(resolve(root).length + 1).replaceAll("\\", "/");
       if (patterns.some((pattern) => pattern.test(relative))) paths.add(relative);
     }
