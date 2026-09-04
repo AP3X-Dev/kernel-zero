@@ -71,15 +71,15 @@ The validator ships as a self-contained bundle, so a consumer needs no access to
 this monorepo.
 
 ```text
-npm run validator:pack                                   # writes dist/*.tgz
-npm install --save-dev ./kernel-zero-validator-0.1.0.tgz typescript@5   # in the target repo
+npm install --save-dev @kernel-zero/validator
 ```
 
 Then add a `validator:self` script, copy `.githooks/pre-commit`, and copy the CI
 workflow. `docs/validator-and-hooks.md` carries the exact commands and the two
 custody items a human owns: making the check required, and protecting the
-workflow, policy, and validator from the contributors being judged. There is no
-registry publication.
+workflow, policy, and validator from the contributors being judged. Maintainers
+can run `npm run validator:package:check` to build, pack, install, and exercise
+the exact consumer artifact before a release.
 
 ## Profiles
 

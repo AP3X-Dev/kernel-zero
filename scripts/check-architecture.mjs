@@ -59,6 +59,12 @@ const allowedWorkspaceDependencies = Object.freeze({
   ]),
 });
 
+// These workspaces publish compiled bundles rather than their source trees. Their internal source
+// imports are build inputs, so they belong in devDependencies and must not leak into the consumer's
+// runtime dependency graph. Keep this allowlist explicit instead of accepting devDependencies as
+// source declarations for every workspace.
+const bundledSourceWorkspaces = new Set(["@kernel-zero/validator"]);
+
 const importPattern = /(?:import|export)\s+(?:type\s+)?(?:[^"']*?\s+from\s+)?["']([^"']+)["']|require\(\s*["']([^"']+)["']\s*\)/gu;
 
 function listSourceFiles(directory) {
@@ -104,6 +110,10 @@ export function evaluateArchitecture() {
       ...(manifest.optionalDependencies ?? {}),
       ...(manifest.peerDependencies ?? {}),
     };
+    const sourceDeclared = {
+      ...declared,
+      ...(bundledSourceWorkspaces.has(workspaceName) ? (manifest.devDependencies ?? {}) : {}),
+    };
 
     if (manifest.name !== workspaceName) {
       violations.push(`${workspaceDirectory}/package.json declares an unexpected package name`);
@@ -113,7 +123,7 @@ export function evaluateArchitecture() {
       violations.push("packages/domain must have no runtime package dependencies");
     }
 
-    for (const dependency of Object.keys(declared).filter((name) => name in workspaces)) {
+    for (const dependency of Object.keys(sourceDeclared).filter((name) => name in workspaces)) {
       if (!allowedWorkspaceDependencies[workspaceName].has(dependency)) {
         violations.push(`${workspaceName} may not declare ${dependency}`);
       }
@@ -128,7 +138,7 @@ export function evaluateArchitecture() {
         if (internal !== undefined && !allowedWorkspaceDependencies[workspaceName].has(internal)) {
           violations.push(`${fileLabel} imports forbidden workspace ${internal}`);
         }
-        if (internal !== undefined && !(internal in declared)) {
+        if (internal !== undefined && !(internal in sourceDeclared)) {
           violations.push(`${fileLabel} imports undeclared workspace ${internal}`);
         }
         if (specifier === "@prisma/client" && workspaceName !== "@kernel-zero/persistence") {

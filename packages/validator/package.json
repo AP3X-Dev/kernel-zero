@@ -1,27 +1,51 @@
 {
   "name": "@kernel-zero/validator",
   "version": "0.1.0",
-  "private": true,
+  "description": "Network-free deterministic architecture policy validator for KERNEL ZERO.",
+  "license": "MIT",
   "type": "module",
+  "keywords": [
+    "architecture",
+    "governance",
+    "policy",
+    "validator"
+  ],
+  "homepage": "https://github.com/AP3X-Dev/KERNEL-ZERO#readme",
+  "bugs": {
+    "url": "https://github.com/AP3X-Dev/KERNEL-ZERO/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AP3X-Dev/KERNEL-ZERO.git",
+    "directory": "packages/validator"
+  },
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node22 --external:typescript --outfile=dist/kernel-zero.js"
+    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node22 --external:typescript --outfile=dist/kernel-zero.js",
+    "prepack": "npm run build"
   },
   "bin": {
-    "kernel-zero": "./dist/kernel-zero.js"
+    "kernel-zero": "dist/kernel-zero.js"
   },
-  "files": ["dist"],
-  "exports": {
-    ".": "./src/index.ts"
-  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
   "dependencies": {
-    "typescript": "^5.9.0"
-  },
-  "optionalDependencies": {
-    "@kernel-zero/contracts": "*",
-    "@kernel-zero/domain": "*",
-    "@kernel-zero/profile-software-architecture": "*"
+    "typescript": "5.9.3"
   },
   "devDependencies": {
+    "@kernel-zero/contracts": "*",
+    "@kernel-zero/domain": "*",
+    "@kernel-zero/profile-software-architecture": "*",
     "esbuild": "^0.28.2"
   }
 }

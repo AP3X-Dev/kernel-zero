@@ -56,30 +56,31 @@ validator, evidence, hook, and CI gate they consume.
 
 The validator ships as a self-contained bundle so a consumer repository does
 not need this monorepo's workspace packages. The consumer-facing surface is
-the `kernel-zero` bin only; the package's `exports` field (`./src/index.ts`)
-is for in-workspace consumers of this repository and is not part of the
-packed tarball.
+the `kernel-zero` bin only. There is intentionally no JavaScript library export
+in version `0.1.0`.
 
-From this repository, build and pack the tarball:
-
-```text
-npm run validator:pack
-```
-
-This writes `dist/kernel-zero-validator-0.1.0.tgz`. In the consumer
-repository, install it alongside `typescript` (the validator's only runtime
-dependency, kept external of the bundle):
+Install the public package in the repository it will govern:
 
 ```text
-npm install --save-dev ./kernel-zero-validator-0.1.0.tgz typescript@5
+npm install --save-dev @kernel-zero/validator
 ```
 
-Add a `validator:self` script that points at the consumer's own policy file,
-then wire it into `.githooks/pre-commit` the same way this repository does:
+The package installs its pinned TypeScript compiler dependency. Add a
+`validator:self` script that points at the consumer's own policy file, then wire
+it into `.githooks/pre-commit` the same way this repository does:
 
 ```text
 "validator:self": "kernel-zero validate --policy kernel-zero.policy.json --root . --workspace <workspace-id> --out .kernel-zero/evidence.json"
 ```
 
-There is no registry publication of `@kernel-zero/validator`; the tarball
-produced by `validator:pack` is the only distribution channel.
+Maintainers can produce a local tarball or run the complete consumer-artifact
+check without publishing:
+
+```text
+npm run validator:pack
+npm run validator:package:check
+```
+
+The package check rebuilds the CLI through its `prepack` lifecycle, asserts the
+exact tarball contents and metadata, installs it into a clean temporary project,
+and requires an installed `kernel-zero` validation to exit `0`.
