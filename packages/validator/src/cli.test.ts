@@ -1,10 +1,11 @@
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { CliUsageError, parseCliArguments, runCli } from "./cli";
+import { CliUsageError, isDirectExecution, parseCliArguments, runCli } from "./cli";
 
 const WORKSPACE = "0195f000-0000-7000-8000-000000000002";
 
@@ -17,6 +18,28 @@ async function validatorWorkspace(): Promise<Readonly<{ policy: string; root: st
 }
 
 describe("validator CLI", () => {
+  it("recognizes direct execution through a package-manager symlink", () => {
+    const filesystemRoot = path.parse(process.cwd()).root;
+    const modulePath = path.join(filesystemRoot, "installed", "package", "dist", "kernel-zero.js");
+    const binPath = path.join(filesystemRoot, "installed", ".bin", "kernel-zero");
+    const resolveRealPath = vi.fn((candidate: string) => {
+      if (candidate === binPath) return modulePath;
+      return candidate;
+    });
+
+    expect(isDirectExecution(
+      pathToFileURL(modulePath).href,
+      binPath,
+      resolveRealPath,
+    )).toBe(true);
+    expect(isDirectExecution(
+      pathToFileURL(modulePath).href,
+      path.join(filesystemRoot, "installed", "other.js"),
+      resolveRealPath,
+    )).toBe(false);
+    expect(isDirectExecution(pathToFileURL(modulePath).href, undefined, resolveRealPath)).toBe(false);
+  });
+
   it("parses the exact validate command and optional exception bundle", () => {
     expect(parseCliArguments([
       "validate",

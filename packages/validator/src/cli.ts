@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import { isSha256Digest, isUuidV7 } from "@kernel-zero/domain";
 
@@ -37,6 +38,19 @@ export class CliUsageError extends Error {
   public constructor(message: string) {
     super(message);
     this.name = "CliUsageError";
+  }
+}
+
+export function isDirectExecution(
+  moduleUrl: string,
+  argvPath: string | undefined,
+  resolveRealPath: (path: string) => string = realpathSync,
+): boolean {
+  if (argvPath === undefined || argvPath.length === 0) return false;
+  try {
+    return resolveRealPath(fileURLToPath(moduleUrl)) === resolveRealPath(argvPath);
+  } catch {
+    return false;
   }
 }
 
@@ -130,7 +144,7 @@ export async function runCli(argv: readonly string[], execute: ValidationExecuto
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+if (isDirectExecution(import.meta.url, process.argv[1])) {
   const { runValidation } = await import("./runner");
   process.exitCode = await runCli(process.argv.slice(2), runValidation);
 }
