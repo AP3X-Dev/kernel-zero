@@ -35,6 +35,37 @@ instructions, git configuration, nor branch protection.
 `--policy-approval`, `--workspace-trust`, and `--custody-out`. See
 `docs/contracts/README.md` for the custody artifacts and proof order.
 
+## Custody-aware adoption
+
+Custody proves that the exact policy being enforced was approved by the
+workspace authority, so the contributor being judged cannot pass by weakening
+the rules. Adopt it with these boundaries:
+
+- **Protected inputs.** The policy file, the pinned validator version, the CI
+  workflow, and the workspace trust bundle must sit outside the governed maker's
+  authority. Use `CODEOWNERS` (or the host's equivalent) so a different human
+  reviews any change to them, and make the CI `verify` job a required branch
+  check. Both are repository-host settings a human performs; neither the
+  validator nor `kernel-zero init` changes them.
+- **Trust bundle distribution.** CI orchestration obtains the workspace trust
+  bundle before validation starts and passes it as `--workspace-trust`; the
+  validator itself never fetches trust from the network, environment, keychain,
+  or repository. Treat the bundle like the policy: reviewed, pinned, protected.
+- **Approval-time semantics.** Authority is judged only at the artifact's signed
+  `approvedAt`: a key must be valid from before that instant, not expired at it,
+  and not revoked from at or before it. Revoking a key is retroactive from
+  `revokedFrom`, so rotate by registering the new key first, approving new
+  revisions with it, and only then revoking the old one with a `revokedFrom`
+  after the last approval you still want to honor. Each registration and each
+  revocation advances the bundle revision; re-export the bundle after either.
+- **Exit codes with custody.** A failed proof writes only custody evidence and
+  exits `1`; malformed custody input exits `2` and writes nothing. Both must
+  block the protected operation like any other nonzero exit.
+- **What ships today.** Approval with custody exists as a governed action with
+  an ephemeral in-process signer for fixtures and tests. Production signer
+  composition, production authority keys, live trust import, and live custody
+  enforcement remain separate human decisions and are unavailable by design.
+
 ## Pre-commit example
 
 This repository includes `.githooks/pre-commit`. A developer may opt into the

@@ -75,9 +75,10 @@ npm install --save-dev @kernel-zero/validator
 ```
 
 Then add a `validator:self` script, copy `.githooks/pre-commit`, and copy the CI
-workflow. `docs/validator-and-hooks.md` carries the exact commands and the two
-custody items a human owns: making the check required, and protecting the
-workflow, policy, and validator from the contributors being judged. Maintainers
+workflow, or run `kernel-zero init` to scaffold them. `docs/validator-and-hooks.md`
+carries the exact commands and the custody items a human owns: making the check
+required, protecting the workflow, policy, validator, and trust bundle from the
+contributors being judged, and rotating authority keys. Maintainers
 can run `npm run validator:package:check` to build, pack, install, and exercise
 the exact consumer artifact before a release.
 
