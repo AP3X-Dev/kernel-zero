@@ -17,6 +17,7 @@ export const CAPABILITIES = Object.freeze([
   "policy.approve",
   "policy.activate",
   "policy.retire",
+  "policy.authority-key.manage",
   "evidence.read",
   "evidence.submit",
   "evidence.signing-key.manage",
@@ -76,6 +77,7 @@ export const ALL_CAPABILITIES_BY_GROUP: CapabilityGroups = Object.freeze({
     "policy.approve",
     "policy.activate",
     "policy.retire",
+    "policy.authority-key.manage",
   ]),
   role: freezeCapabilities(["role.read", "role.manage"]),
   workspace: freezeCapabilities([
@@ -104,7 +106,7 @@ export const BUILT_IN_ROLE_CAPABILITIES: Readonly<
 > = Object.freeze({
   administrator: freezeCapabilities(
     CAPABILITIES.filter(
-      (capability) => capability !== "workspace.delete" && capability !== "workspace.transfer",
+      (capability) => capability !== "workspace.delete" && capability !== "workspace.transfer" && capability !== "policy.authority-key.manage",
     ),
   ),
   observer: freezeCapabilities([
@@ -147,9 +149,11 @@ export const DEFAULT_ROLE_PROFILE_LABELS = Object.freeze([
   "observer",
 ] as const satisfies readonly DefaultRoleProfileLabel[]);
 
+// Policy authority keys decide which policy the validator will trust, so only the owner manages them.
 export const OWNER_ONLY_CAPABILITIES = Object.freeze([
   "workspace.delete",
   "workspace.transfer",
+  "policy.authority-key.manage",
 ] as const satisfies readonly Capability[]);
 
 export type OwnerOnlyCapability = (typeof OWNER_ONLY_CAPABILITIES)[number];

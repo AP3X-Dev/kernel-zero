@@ -6,6 +6,7 @@ import {
   loadAuditView,
   loadPaymentEventsView,
   loadPoliciesView,
+  loadPolicyCustodyView,
   loadPolicyDetailView,
   loadRunDetailView,
   loadSubscriptionView,
@@ -92,5 +93,21 @@ describe("governance UI read models", () => {
     const call = findMany.mock.calls[0]?.[0] as Readonly<{ select: Readonly<Record<string, boolean>>; where: unknown }>;
     expect(call.where).toEqual({ state: "quarantined" });
     for (const field of ["payloadDigest", "replayFields", "workspaceId"]) expect(call.select).not.toHaveProperty(field);
+  });
+});
+
+describe("policy custody read model", () => {
+  it("returns workspace-scoped public key summaries and a trust bundle, or null with no keys", async () => {
+    const findMany = vi.fn<(args: { select?: Record<string, unknown>; where: unknown }) => Promise<unknown[]>>().mockResolvedValue([]);
+    const client = { policyAuthorityKey: { findMany } } as unknown as PersistenceClient;
+    await expect(loadPolicyCustodyView(client, WORKSPACE)).resolves.toEqual({ bundle: null, keys: [] });
+    for (const call of findMany.mock.calls) expect(call[0]).toMatchObject({ where: { workspaceId: WORKSPACE } });
+    const row = { createdAt: new Date("2026-01-01T00:00:00.000Z"), id: "row", keyId: "authority-1", label: "Gate", publicKeyX: "A".repeat(43), revokedFrom: null, validFrom: new Date("2026-01-01T00:00:00.000Z"), validUntil: null };
+    findMany.mockResolvedValue([row]);
+    const view = await loadPolicyCustodyView(client, WORKSPACE);
+    expect(view.keys[0]).toEqual(expect.objectContaining({ keyId: "authority-1" }));
+    expect(findMany.mock.calls.some((call) => call[0].select !== undefined && !("publicKeyX" in call[0].select))).toBe(true);
+    expect(view.bundle?.keys[0]?.x).toBe("A".repeat(43));
+    expect(view.bundle?.revision).toBe(1);
   });
 });

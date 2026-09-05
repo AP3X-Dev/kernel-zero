@@ -4,12 +4,16 @@ import type { PolicyEnvelope } from "@kernel-zero/contracts";
 import {
   listEvidenceFindings,
   listEvidenceRuns,
+  listPolicyAuthorityKeys,
+  readWorkspaceTrustBundle,
   SAFE_AUDIT_SELECT,
   type EvidenceFindingReview,
   type EvidenceRunReview,
   type PersistenceClient,
+  type PolicyAuthorityKeySummary,
   type SafeAuditRecord,
 } from "@kernel-zero/persistence";
+import type { WorkspaceTrustBundle } from "@kernel-zero/contracts";
 import { parsePolicyDocument } from "@kernel-zero/profiles";
 
 export type PolicyListItem = Readonly<{
@@ -224,6 +228,17 @@ export async function loadSubscriptionView(client: PersistenceClient, workspaceI
     where: { workspaceId },
   });
   return row === null ? null : Object.freeze(row);
+}
+
+export type PolicyCustodyView = Readonly<{
+  bundle: WorkspaceTrustBundle | null;
+  keys: readonly PolicyAuthorityKeySummary[];
+}>;
+
+/** Public key material and timelines only; the bundle is exactly what CI hands the validator. */
+export async function loadPolicyCustodyView(client: PersistenceClient, workspaceId: string): Promise<PolicyCustodyView> {
+  const [keys, bundle] = await Promise.all([listPolicyAuthorityKeys(client, workspaceId), readWorkspaceTrustBundle(client, workspaceId)]);
+  return Object.freeze({ bundle, keys });
 }
 
 export async function loadAuditView(

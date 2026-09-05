@@ -37,6 +37,7 @@ describe("closed capability vocabulary and built-in roles", () => {
       "policy.approve",
       "policy.activate",
       "policy.retire",
+      "policy.authority-key.manage",
       "evidence.read",
       "evidence.submit",
       "evidence.signing-key.manage",
@@ -58,7 +59,7 @@ describe("closed capability vocabulary and built-in roles", () => {
     expect(BUILT_IN_ROLE_CAPABILITIES.owner).toEqual(CAPABILITIES);
     expect(BUILT_IN_ROLE_CAPABILITIES.administrator).toEqual(
       CAPABILITIES.filter(
-        (capability) => capability !== "workspace.delete" && capability !== "workspace.transfer",
+        (capability) => capability !== "workspace.delete" && capability !== "workspace.transfer" && capability !== "policy.authority-key.manage",
       ),
     );
     expect(BUILT_IN_ROLE_CAPABILITIES.policy_author).toEqual([
@@ -202,9 +203,10 @@ describe("capability grouping", () => {
     );
   });
 
-  it("excludes the two owner-only capabilities from every custom role", () => {
+  it("excludes the three owner-only capabilities from every custom role", () => {
     expect(CUSTOM_ROLE_CAPABILITIES).not.toContain("workspace.delete");
     expect(CUSTOM_ROLE_CAPABILITIES).not.toContain("workspace.transfer");
-    expect(CUSTOM_ROLE_CAPABILITIES).toHaveLength(CAPABILITIES.length - 2);
+    expect(CUSTOM_ROLE_CAPABILITIES).not.toContain("policy.authority-key.manage");
+    expect(CUSTOM_ROLE_CAPABILITIES).toHaveLength(CAPABILITIES.length - 3);
   });
 });

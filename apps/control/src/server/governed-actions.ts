@@ -146,6 +146,10 @@ export const GOVERNED_ACTIONS = Object.freeze({
     audit: { actionCode: "policy.revision-approved-with-custody", description: "Policy revision approved with workspace custody.", subjectType: "policy-revision" },
     capability: "policy.approve", idempotency: "idempotent", quota: null, tenantScope: "workspace", transactionTimeoutMs: 10_000,
   }),
+  "policy-authority-key.manage": defineGovernedAction("policy-authority-key.manage", {
+    audit: { actionCode: "policy-authority-key.changed", description: "Workspace policy authority key changed.", subjectType: "policy-authority-key" },
+    capability: "policy.authority-key.manage", idempotency: "none", quota: null, tenantScope: "workspace", transactionTimeoutMs: 10_000,
+  }),
   "policy.retire": defineGovernedAction("policy.retire", {
     audit: { actionCode: "policy.pack-retired", description: "Policy pack retired.", subjectType: "policy-pack" },
     capability: "policy.retire", idempotency: "idempotent", quota: null, tenantScope: "workspace", transactionTimeoutMs: 10_000,

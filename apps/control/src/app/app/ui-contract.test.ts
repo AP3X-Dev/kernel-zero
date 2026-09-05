@@ -23,6 +23,7 @@ describe("route and responsive UI contract", () => {
       "exceptions/page.tsx",
       "people/page.tsx",
       "settings/workspace/page.tsx",
+      "settings/custody/page.tsx",
       "settings/subscription/page.tsx",
       "settings/audit/page.tsx",
       "../ops/page.tsx",
@@ -34,7 +35,7 @@ describe("route and responsive UI contract", () => {
   it("server-gates every tenant and operator page instead of relying on navigation visibility", () => {
     const workspacePages = [
       "page.tsx", "policies/page.tsx", "policies/[pack]/page.tsx", "runs/page.tsx", "runs/[runId]/page.tsx",
-      "exceptions/page.tsx", "people/page.tsx", "settings/workspace/page.tsx", "settings/subscription/page.tsx", "settings/audit/page.tsx",
+      "exceptions/page.tsx", "people/page.tsx", "settings/workspace/page.tsx", "settings/custody/page.tsx", "settings/subscription/page.tsx", "settings/audit/page.tsx",
     ];
     for (const page of workspacePages) {
       expect(readFileSync(resolve(appRoot, "app", page), "utf8")).toContain("requireWorkspaceRoute(");

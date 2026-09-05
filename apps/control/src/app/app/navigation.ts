@@ -13,6 +13,7 @@ export const WORKSPACE_NAVIGATION: readonly WorkspaceNavigationItem[] = Object.f
   { capability: "exception.read", href: "/app/exceptions", label: "Exceptions" },
   { capability: "member.read", href: "/app/people", label: "People" },
   { capability: "workspace.read", href: "/app/settings/workspace", label: "Workspace settings" },
+  { capability: "policy.read", href: "/app/settings/custody", label: "Policy custody" },
   { capability: "billing.read", href: "/app/settings/subscription", label: "Subscription" },
   { capability: "audit.read", href: "/app/settings/audit", label: "Audit history" },
 ]);
