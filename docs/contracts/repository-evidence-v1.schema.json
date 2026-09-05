@@ -143,13 +143,20 @@
           "type": "string",
           "enum": [
             "BOUNDARY_PARSE_REQUIRED",
+            "CLOSED_REGISTRY_ENTRY_INVALID",
+            "CLOSED_REGISTRY_PROOF_FAILED",
+            "CONTEXT_PARAMETER_INVALID",
+            "CONTEXT_PARAMETER_PROOF_FAILED",
             "DENIED_IMPORT",
             "GOVERNED_OPERATION_INVALID",
             "PARSE_FAILURE",
+            "PROPERTY_WRITE_DENIED",
+            "PROPERTY_WRITE_PROOF_FAILED",
             "REQUIRED_EXPORT_KEY_MISSING",
             "REQUIRED_IMPORT_MISSING",
             "RESTRICTED_CALL",
-            "TENANT_PARAMETER_MISSING"
+            "TENANT_PARAMETER_MISSING",
+            "UNREGISTERED_DECLARATION"
           ]
         },
         "path": {

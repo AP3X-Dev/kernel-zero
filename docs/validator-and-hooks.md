@@ -17,6 +17,24 @@ without touching the output. Production export requires an authenticated
 control-plane channel and approved signing-key custody; neither is inferred by
 the standalone validator.
 
+## Agent-facing commands
+
+`kernel-zero explain --policy|--evidence|--custody <file>` renders one strictly
+parsed artifact for a human or an agent: rules with remediation, findings with
+location and remediation, or custody findings. It reads no source and performs
+no network access, so unknown codes or kinds fail parsing with exit `2` instead
+of being guessed at.
+
+`kernel-zero init` scaffolds the policy, pre-commit hook, and CI workflow into a
+consumer repository, refusing to overwrite anything that already exists, and
+prints the AGENTS/CLAUDE authority text for a human to place. It pins the exact
+validator version in that guidance and touches neither `package.json`, agent
+instructions, git configuration, nor branch protection.
+
+`kernel-zero validate` accepts the optional all-or-none custody group
+`--policy-approval`, `--workspace-trust`, and `--custody-out`. See
+`docs/contracts/README.md` for the custody artifacts and proof order.
+
 ## Pre-commit example
 
 This repository includes `.githooks/pre-commit`. A developer may opt into the

@@ -52,12 +52,7 @@
           "$ref": "#/$defs/__schema1"
         },
         "exclude": {
-          "minItems": 0,
-          "maxItems": 100,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/__schema2"
-          }
+          "$ref": "#/$defs/__schema3"
         }
       },
       "required": [
@@ -72,7 +67,7 @@
       "maxItems": 500,
       "type": "array",
       "items": {
-        "$ref": "#/$defs/__schema3"
+        "$ref": "#/$defs/__schema4"
       }
     }
   },
@@ -106,6 +101,14 @@
       "maxLength": 500
     },
     "__schema3": {
+      "minItems": 0,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema2"
+      }
+    },
+    "__schema4": {
       "type": "object",
       "properties": {
         "id": {
@@ -143,7 +146,7 @@
                   "maxItems": 100,
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema4"
+                    "$ref": "#/$defs/__schema5"
                   }
                 }
               },
@@ -165,7 +168,7 @@
                   "$ref": "#/$defs/__schema1"
                 },
                 "module": {
-                  "$ref": "#/$defs/__schema5"
+                  "$ref": "#/$defs/__schema6"
                 },
                 "allowTypeOnly": {
                   "default": false,
@@ -187,7 +190,7 @@
                   "const": "restrict-call-site"
                 },
                 "callee": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema7"
                 },
                 "allowFrom": {
                   "$ref": "#/$defs/__schema1"
@@ -215,10 +218,10 @@
                   "$ref": "#/$defs/__schema1"
                 },
                 "exportName": {
-                  "$ref": "#/$defs/__schema5"
+                  "$ref": "#/$defs/__schema6"
                 },
                 "requiredKeys": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema7"
                 }
               },
               "required": [
@@ -240,11 +243,11 @@
                   "$ref": "#/$defs/__schema1"
                 },
                 "symbols": {
-                  "$ref": "#/$defs/__schema5"
+                  "$ref": "#/$defs/__schema6"
                 },
                 "parameter": {
                   "default": "workspaceId",
-                  "$ref": "#/$defs/__schema5"
+                  "$ref": "#/$defs/__schema6"
                 }
               },
               "required": [
@@ -265,10 +268,10 @@
                   "$ref": "#/$defs/__schema1"
                 },
                 "boundaryCalls": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema7"
                 },
                 "parserCalls": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema7"
                 }
               },
               "required": [
@@ -290,21 +293,21 @@
                   "$ref": "#/$defs/__schema1"
                 },
                 "registryExport": {
-                  "$ref": "#/$defs/__schema5"
+                  "$ref": "#/$defs/__schema6"
                 },
                 "requiredKeys": {
                   "minItems": 5,
                   "maxItems": 5,
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema7"
+                    "$ref": "#/$defs/__schema8"
                   }
                 },
                 "declarationCalls": {
                   "default": [
                     "defineGovernedAction"
                   ],
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema7"
                 }
               },
               "required": [
@@ -312,6 +315,167 @@
                 "files",
                 "registryExport",
                 "requiredKeys"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "require-context-parameter"
+                },
+                "files": {
+                  "$ref": "#/$defs/__schema1"
+                },
+                "symbols": {
+                  "$ref": "#/$defs/__schema6"
+                },
+                "parameter": {
+                  "$ref": "#/$defs/__schema6"
+                },
+                "expectedType": {
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "intrinsic"
+                            },
+                            "name": {
+                              "type": "string",
+                              "enum": [
+                                "string",
+                                "number",
+                                "boolean",
+                                "bigint"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "export"
+                            },
+                            "file": {
+                              "$ref": "#/$defs/__schema9"
+                            },
+                            "exportName": {
+                              "$ref": "#/$defs/__schema10"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "file",
+                            "exportName"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "files",
+                "symbols",
+                "parameter"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "require-closed-registry"
+                },
+                "registryFile": {
+                  "$ref": "#/$defs/__schema9"
+                },
+                "registryExport": {
+                  "$ref": "#/$defs/__schema10"
+                },
+                "declarationFiles": {
+                  "$ref": "#/$defs/__schema1"
+                },
+                "declarationCalls": {
+                  "$ref": "#/$defs/__schema7"
+                },
+                "requiredKeys": {
+                  "minItems": 0,
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema6"
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "registryFile",
+                "registryExport",
+                "declarationFiles",
+                "declarationCalls",
+                "requiredKeys"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "restrict-property-write"
+                },
+                "files": {
+                  "$ref": "#/$defs/__schema1"
+                },
+                "targetType": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "$ref": "#/$defs/__schema9"
+                    },
+                    "exportName": {
+                      "$ref": "#/$defs/__schema10"
+                    }
+                  },
+                  "required": [
+                    "file",
+                    "exportName"
+                  ],
+                  "additionalProperties": false
+                },
+                "property": {
+                  "$ref": "#/$defs/__schema10"
+                },
+                "allowFrom": {
+                  "$ref": "#/$defs/__schema3"
+                }
+              },
+              "required": [
+                "kind",
+                "files",
+                "targetType",
+                "property",
+                "allowFrom"
               ],
               "additionalProperties": false
             }
@@ -332,25 +496,25 @@
       ],
       "additionalProperties": false
     },
-    "__schema4": {
+    "__schema5": {
       "type": "string",
       "minLength": 6,
       "maxLength": 500
     },
-    "__schema5": {
+    "__schema6": {
       "type": "string",
       "minLength": 1,
       "maxLength": 500
     },
-    "__schema6": {
+    "__schema7": {
       "minItems": 1,
       "maxItems": 100,
       "type": "array",
       "items": {
-        "$ref": "#/$defs/__schema5"
+        "$ref": "#/$defs/__schema6"
       }
     },
-    "__schema7": {
+    "__schema8": {
       "type": "string",
       "enum": [
         "capability",
@@ -359,6 +523,15 @@
         "audit",
         "idempotency"
       ]
+    },
+    "__schema9": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "__schema10": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z_$][\\w$]*$"
     }
   }
 }

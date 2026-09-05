@@ -26,21 +26,27 @@ export class DiscoveryError extends Error {
 }
 
 export type ValidatorPathInput = Readonly<{
+  custodyOut?: string;
   exceptions?: string;
   exceptionsTrustKey?: string;
   out: string;
   policy: string;
+  policyApproval?: string;
   root: string;
   workspace: string;
+  workspaceTrust?: string;
 }>;
 
 export type ResolvedValidatorPaths = Readonly<{
+  custodyOut?: string;
   exceptions?: string;
   exceptionsTrustKey?: string;
   out: string;
   policy: string;
+  policyApproval?: string;
   root: string;
   workspace: string;
+  workspaceTrust?: string;
 }>;
 
 export type DiscoveryInput = Readonly<{
@@ -154,12 +160,29 @@ export async function resolveValidatorPaths(input: ValidatorPathInput): Promise<
 
   const policy = await resolveExistingFile(rootLexical, rootResolved, input.policy, "Policy path");
   const out = await resolveOutputFile(rootLexical, rootResolved, input.out);
-  if (input.exceptions === undefined || input.exceptionsTrustKey === undefined) {
-    return { out, policy, root: rootResolved, workspace: input.workspace };
+  let resolved: ResolvedValidatorPaths = { out, policy, root: rootResolved, workspace: input.workspace };
+  if (input.exceptions !== undefined && input.exceptionsTrustKey !== undefined) {
+    resolved = {
+      ...resolved,
+      exceptions: await resolveExistingFile(rootLexical, rootResolved, input.exceptions, "Exceptions path"),
+      exceptionsTrustKey: await resolveExistingFile(rootLexical, rootResolved, input.exceptionsTrustKey, "Exceptions trust key path"),
+    };
   }
-  const exceptions = await resolveExistingFile(rootLexical, rootResolved, input.exceptions, "Exceptions path");
-  const exceptionsTrustKey = await resolveExistingFile(rootLexical, rootResolved, input.exceptionsTrustKey, "Exceptions trust key path");
-  return { exceptions, exceptionsTrustKey, out, policy, root: rootResolved, workspace: input.workspace };
+  if (input.policyApproval !== undefined && input.workspaceTrust !== undefined && input.custodyOut !== undefined) {
+    resolved = {
+      ...resolved,
+      custodyOut: await resolveOutputFile(rootLexical, rootResolved, input.custodyOut),
+      policyApproval: await resolveExistingFile(rootLexical, rootResolved, input.policyApproval, "Policy approval path"),
+      workspaceTrust: await resolveExistingFile(rootLexical, rootResolved, input.workspaceTrust, "Workspace trust path"),
+    };
+  }
+  const outputs = [resolved.out, resolved.custodyOut].filter((value): value is string => value !== undefined);
+  const inputs = [resolved.policy, resolved.exceptions, resolved.exceptionsTrustKey, resolved.policyApproval, resolved.workspaceTrust]
+    .filter((value): value is string => value !== undefined);
+  if (new Set(outputs).size !== outputs.length || outputs.some((output) => inputs.includes(output))) {
+    throw new DiscoveryError("Output paths must be distinct from each other and from every input path.");
+  }
+  return resolved;
 }
 
 export function normalizeRelativePath(input: string): string {

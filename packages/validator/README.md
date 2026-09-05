@@ -31,7 +31,32 @@ example and the complete hook and CI setup are available in the
 
 The command exits `0` when policy passes, `1` for definite violations, and `2`
 when validation cannot complete safely. Both nonzero outcomes should block the
-protected operation.
+protected operation. The JSON evidence at `--out` is authoritative; the command
+also prints one summary line and one deterministic line per finding (level,
+rule, path:line:column, code, subject) followed by the policy remediation.
+
+Custody proof is optional and all-or-none: `--policy-approval <file>
+--workspace-trust <file> --custody-out <file>` verifies offline that the exact
+policy was approved by a trusted workspace authority before any source is read.
+A failed proof writes only custody evidence and exits `1` without touching
+`--out`; malformed custody input exits `2` and writes nothing.
+
+## Explain and init
+
+```text
+kernel-zero explain --policy kernel-zero.policy.json
+kernel-zero explain --evidence .kernel-zero/evidence.json
+kernel-zero explain --custody .kernel-zero/custody.json
+kernel-zero init [--root <dir>] [--workspace <uuid>]
+```
+
+`explain` strictly parses one artifact and renders rules or findings with their
+remediation; it reads no source and makes no network calls. `init` scaffolds
+`kernel-zero.policy.json`, `.githooks/pre-commit`, and
+`.github/workflows/kernel-zero.yml` into an empty spot, refuses to overwrite any
+existing file, and prints the AGENTS/CLAUDE snippet, the `validator:self`
+script, and the exact validator version to install. It never edits
+`package.json`, agent instructions, git configuration, or branch protection.
 
 Validation reads contained TypeScript and TSX files, writes normalized evidence,
 and performs no network requests or source upload.

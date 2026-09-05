@@ -3,20 +3,26 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import type { PolicyCustodyEvidence } from "@kernel-zero/contracts";
 import { isSha256Digest, isUuidV7 } from "@kernel-zero/domain";
 
+import { explain, init, parseExplainArguments, parseInitArguments, type ExplainCommand, type InitCommand } from "./commands";
 import { resolveValidatorPaths, type ResolvedValidatorPaths } from "./discovery";
+import { remediationsOf, renderCustody, renderEvidence, type RenderableEvidence } from "./render";
 
 export type ValidatorExitCode = 0 | 1 | 2;
 
 export type ValidateCommand = Readonly<{
   command: "validate";
+  custodyOut?: string;
   exceptions?: string;
   exceptionsTrustKey?: string;
   out: string;
   policy: string;
+  policyApproval?: string;
   root: string;
   workspace: string;
+  workspaceTrust?: string;
 }>;
 
 export type ExportExceptionsCommand = Readonly<{
@@ -25,19 +31,34 @@ export type ExportExceptionsCommand = Readonly<{
   policyDigest: string;
 }>;
 
-export type CliCommand = ValidateCommand | ExportExceptionsCommand;
+export type CliCommand = ValidateCommand | ExportExceptionsCommand | ExplainCommand | InitCommand;
 
 export type ResolvedValidateCommand = Readonly<ResolvedValidatorPaths & { command: "validate" }>;
 export type ValidationOutcome = Readonly<{ outcome: "pass" | "violations" | "error" }>;
-export type ValidationExecutor = (command: ResolvedValidateCommand) => Promise<ValidationOutcome>;
+/** What an executor may hand back: the outcome, plus the artifacts the CLI renders when present. */
+export type ValidationReport = ValidationOutcome & Readonly<{
+  custody?: PolicyCustodyEvidence | null;
+  evidence?: RenderableEvidence;
+  policy?: Readonly<{ rules: readonly Readonly<{ id: string; remediation: string }>[] }>;
+}>;
+export type ValidationExecutor = (command: ResolvedValidateCommand) => Promise<ValidationReport>;
 
 const REQUIRED_OPTIONS = ["--policy", "--root", "--workspace", "--out"] as const;
-const ALLOWED_OPTIONS = new Set([...REQUIRED_OPTIONS, "--exceptions", "--exceptions-trust-key"]);
+const CUSTODY_OPTIONS = ["--policy-approval", "--workspace-trust", "--custody-out"] as const;
+const ALLOWED_OPTIONS = new Set([...REQUIRED_OPTIONS, "--exceptions", "--exceptions-trust-key", ...CUSTODY_OPTIONS]);
 
 export class CliUsageError extends Error {
   public constructor(message: string) {
     super(message);
     this.name = "CliUsageError";
+  }
+}
+
+/** Custody was validly proven to fail: custody evidence is written, source is never scanned, exit is 1. */
+export class CustodyRejectedError extends Error {
+  public constructor(public readonly custody: PolicyCustodyEvidence) {
+    super("Policy custody verification failed.");
+    this.name = "CustodyRejectedError";
   }
 }
 
@@ -56,6 +77,8 @@ export function isDirectExecution(
 
 export function parseCliArguments(argv: readonly string[]): CliCommand {
   if (argv[0] === "exceptions") return parseExportArguments(argv);
+  if (argv[0] === "explain") return parseExplainArguments(argv.slice(1));
+  if (argv[0] === "init") return parseInitArguments(argv.slice(1));
   if (argv[0] !== "validate") throw new CliUsageError("Expected the validate command");
 
   const values = new Map<string, string>();
@@ -91,9 +114,19 @@ export function parseCliArguments(argv: readonly string[]): CliCommand {
   if ((exceptions === undefined) !== (exceptionsTrustKey === undefined)) {
     throw new CliUsageError("Options --exceptions and --exceptions-trust-key must be supplied together");
   }
-  return exceptions === undefined || exceptionsTrustKey === undefined
-    ? { command: "validate", out, policy, root, workspace }
-    : { command: "validate", exceptions, exceptionsTrustKey, out, policy, root, workspace };
+  const custodyPresent = CUSTODY_OPTIONS.filter((option) => values.has(option));
+  if (custodyPresent.length !== 0 && custodyPresent.length !== CUSTODY_OPTIONS.length) {
+    throw new CliUsageError("Options --policy-approval, --workspace-trust, and --custody-out must be supplied together");
+  }
+  const base = exceptions === undefined || exceptionsTrustKey === undefined
+    ? { command: "validate" as const, out, policy, root, workspace }
+    : { command: "validate" as const, exceptions, exceptionsTrustKey, out, policy, root, workspace };
+  const policyApproval = values.get("--policy-approval");
+  const workspaceTrust = values.get("--workspace-trust");
+  const custodyOut = values.get("--custody-out");
+  return policyApproval === undefined || workspaceTrust === undefined || custodyOut === undefined
+    ? base
+    : { ...base, custodyOut, policyApproval, workspaceTrust };
 }
 
 function parseExportArguments(argv: readonly string[]): ExportExceptionsCommand {
@@ -134,10 +167,25 @@ export async function runCli(argv: readonly string[], execute: ValidationExecuto
       process.stderr.write("kernel-zero: EXPORT_UNAVAILABLE: authenticated export and signing-key custody are not configured\n");
       return 2;
     }
+    if (command.command === "explain") {
+      process.stdout.write(await explain(command));
+      return 0;
+    }
+    if (command.command === "init") {
+      process.stdout.write(await init(command));
+      return 0;
+    }
     const paths = await resolveValidatorPaths(command);
-    const outcome = await execute({ command: "validate", ...paths });
-    return exitCodeForOutcome(outcome.outcome);
+    const report = await execute({ command: "validate", ...paths });
+    if (report.custody !== undefined && report.custody !== null) process.stdout.write(renderCustody(report.custody));
+    if (report.evidence !== undefined) process.stdout.write(renderEvidence(report.evidence, remediationsOf(report.policy ?? { rules: [] })));
+    return exitCodeForOutcome(report.outcome);
   } catch (error) {
+    if (error instanceof CustodyRejectedError) {
+      process.stdout.write(renderCustody(error.custody));
+      process.stderr.write(`validator: ${error.message} (${String(error.custody.result.errors)} custody findings)\n`);
+      return 1;
+    }
     const message = error instanceof Error ? error.message : "Unknown validator failure.";
     process.stderr.write(`validator: ${message}\n`);
     return 2;

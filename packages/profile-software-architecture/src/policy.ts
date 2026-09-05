@@ -12,6 +12,16 @@ const ModuleDenialSchema = z.string().min(6).max(500).refine(
   "Denied targets must declare module, module-prefix, or path semantics.",
 );
 
+const IdentifierSchema = z.string().min(1).max(200).regex(/^[A-Za-z_$][\w$]*$/u, "Export names must be a single identifier.");
+const RelativeTypeScriptFileSchema = RelativeGlobSchema.refine(
+  (value) => !/[*?[\]{}]/u.test(value) && /\.(?:ts|tsx)$/u.test(value),
+  "Type files must be one exact contained TypeScript file, not a glob.",
+);
+export const TypeReferenceSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("intrinsic"), name: z.enum(["string", "number", "boolean", "bigint"]) }),
+  z.strictObject({ kind: z.literal("export"), file: RelativeTypeScriptFileSchema, exportName: IdentifierSchema }),
+]);
+
 export const PolicyCheckSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("forbid-import-edge"), from: GlobList, deny: uniqueArray(ModuleDenialSchema, 1, 100) }),
   z.strictObject({ kind: z.literal("require-import"), files: GlobList, module: NonemptyExactStringSchema, allowTypeOnly: z.boolean().default(false) }),
@@ -25,6 +35,28 @@ export const PolicyCheckSchema = z.discriminatedUnion("kind", [
     registryExport: NonemptyExactStringSchema,
     requiredKeys: uniqueArray(z.enum(["capability", "tenantScope", "quota", "audit", "idempotency"]), 5, 5),
     declarationCalls: ExactList.default(["defineGovernedAction"]),
+  }),
+  z.strictObject({
+    kind: z.literal("require-context-parameter"),
+    files: GlobList,
+    symbols: NonemptyExactStringSchema,
+    parameter: NonemptyExactStringSchema,
+    expectedType: TypeReferenceSchema.nullable().default(null),
+  }),
+  z.strictObject({
+    kind: z.literal("require-closed-registry"),
+    registryFile: RelativeTypeScriptFileSchema,
+    registryExport: IdentifierSchema,
+    declarationFiles: GlobList,
+    declarationCalls: ExactList,
+    requiredKeys: uniqueArray(NonemptyExactStringSchema, 0, 100),
+  }),
+  z.strictObject({
+    kind: z.literal("restrict-property-write"),
+    files: GlobList,
+    targetType: z.strictObject({ file: RelativeTypeScriptFileSchema, exportName: IdentifierSchema }),
+    property: IdentifierSchema,
+    allowFrom: OptionalGlobList,
   }),
 ]);
 

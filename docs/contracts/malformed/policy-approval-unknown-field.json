@@ -1,0 +1,25 @@
+{
+  "apiVersion": "kernel-zero.dev/custody/v1",
+  "kind": "PolicyApproval",
+  "workspace": "0195f000-0000-7000-8000-000000000002",
+  "policy": {
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "kind": "RepositoryPolicy",
+    "name": "service-boundaries",
+    "revision": 1
+  },
+  "approvalId": "0195f000-0000-7000-8000-000000000012",
+  "authorId": "0195f000-0000-7000-8000-000000000010",
+  "approverId": "0195f000-0000-7000-8000-000000000011",
+  "approvedAt": "2026-01-15T12:00:00.000Z",
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "signature": {
+    "algorithm": "ed25519",
+    "keyId": "workspace-authority-1",
+    "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+  },
+  "privateKey": "must never appear"
+}

@@ -1,0 +1,41 @@
+{
+  "apiVersion": "kernel-zero.dev/custody/v1",
+  "kind": "PolicyCustodyEvidence",
+  "workspace": "0195f000-0000-7000-8000-000000000002",
+  "policy": {
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "kind": "RepositoryPolicy",
+    "name": "service-boundaries",
+    "revision": 1
+  },
+  "approval": {
+    "approvalId": "0195f000-0000-7000-8000-000000000012",
+    "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "approvedAt": "2026-01-15T12:00:00.000Z"
+  },
+  "trust": {
+    "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "revision": 1,
+    "keyId": "workspace-authority-1"
+  },
+  "tool": {
+    "name": "kernel-zero-validator",
+    "version": "1.0.0"
+  },
+  "result": {
+    "status": "fail",
+    "errors": 1
+  },
+  "findings": [
+    {
+      "code": "CUSTODY_AUTHORITY_TIME_INVALID",
+      "message": "The approval signing authority was not authorized at the signed approval time.",
+      "subject": "authority:workspace-authority-1"
+    }
+  ],
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "sha256:1e987f802729df6f51e58097f1b90971f7a02b58f56fb2a4b6f2bfffeebdaed4"
+  },
+  "generatedAt": "2026-01-15T12:00:00.000Z"
+}

@@ -5,6 +5,10 @@ import { findingCompatibilityReason } from "./compatibility";
 import { findingMessage, type FindingMessageCode } from "./evidence";
 import { RepositoryPolicySchema } from "./policy";
 
+const REG = { declarationCalls: ["defineTool"], declarationFiles: ["src/tools/**/*.ts"], kind: "require-closed-registry", registryExport: "TOOL_POLICY", registryFile: "src/tools/tool-policy.ts", requiredKeys: ["classification"] };
+
+const PW = { allowFrom: ["src/dataplane/state/**"], files: ["src/**/*.ts"], kind: "restrict-property-write", property: "status", targetType: { exportName: "Job", file: "src/domain/job.ts" } };
+
 const checkCases: readonly Readonly<{
   check: Record<string, unknown>;
   code: FindingMessageCode;
@@ -17,6 +21,16 @@ const checkCases: readonly Readonly<{
   { check: { files: ["**/*.ts"], kind: "require-tenant-parameter", parameter: "workspaceId", symbols: "create*" }, code: "TENANT_PARAMETER_MISSING", subject: "symbol:service.create" },
   { check: { boundaryCalls: ["save"], files: ["**/*.ts"], kind: "require-boundary-parse", parserCalls: ["Schema.parse"] }, code: "BOUNDARY_PARSE_REQUIRED", subject: "symbol:handler:save" },
   { check: { declarationCalls: ["defineGovernedAction"], files: ["**/*.ts"], kind: "require-governed-operation", registryExport: "ACTIONS", requiredKeys: ["capability", "tenantScope", "quota", "audit", "idempotency"] }, code: "GOVERNED_OPERATION_INVALID", subject: "action:create:audit" },
+  { check: { files: ["**/*.ts"], kind: "require-context-parameter", parameter: "actorContext", symbols: "create*" }, code: "CONTEXT_PARAMETER_INVALID", subject: "symbol:service.create:parameter:actorContext" },
+  { check: { expectedType: { exportName: "Ctx", file: "src/ctx.ts", kind: "export" }, files: ["**/*.ts"], kind: "require-context-parameter", parameter: "actorContext", symbols: "create*" }, code: "CONTEXT_PARAMETER_PROOF_FAILED", subject: "type:src/ctx.ts#Ctx" },
+  { check: { expectedType: { exportName: "Ctx", file: "src/ctx.ts", kind: "export" }, files: ["**/*.ts"], kind: "require-context-parameter", parameter: "actorContext", symbols: "create*" }, code: "CONTEXT_PARAMETER_PROOF_FAILED", subject: "symbol:create:parameter:actorContext" },
+  { check: REG, code: "CLOSED_REGISTRY_ENTRY_INVALID", subject: "registry:TOOL_POLICY:entry:read/file:classification" },
+  { check: REG, code: "CLOSED_REGISTRY_ENTRY_INVALID", subject: "registry:TOOL_POLICY:entry:<invalid>:id" },
+  { check: REG, code: "UNREGISTERED_DECLARATION", subject: "registry:TOOL_POLICY:declaration:search" },
+  { check: REG, code: "CLOSED_REGISTRY_PROOF_FAILED", subject: "registry:TOOL_POLICY:proof:registry" },
+  { check: REG, code: "CLOSED_REGISTRY_PROOF_FAILED", subject: "registry:TOOL_POLICY:proof:search" },
+  { check: PW, code: "PROPERTY_WRITE_DENIED", subject: "property:src/domain/job.ts#Job.status" },
+  { check: PW, code: "PROPERTY_WRITE_PROOF_FAILED", subject: "property:src/domain/job.ts#Job.status" },
 ];
 
 function policy(check: Record<string, unknown>) {
@@ -51,6 +65,37 @@ describe("evidence rule compatibility", () => {
 
   it.each(checkCases)("rejects a non-normative subject for $code", ({ check, code }) => {
     expect(findingCompatibilityReason(policy(check), finding(code, "not-compatible"))).toBe("rule_subject_mismatch");
+  });
+
+  it("rejects a context type subject when the rule has no exported type obligation", () => {
+    const check = { files: ["**/*.ts"], kind: "require-context-parameter", parameter: "actorContext", symbols: "create*" };
+    expect(findingCompatibilityReason(policy(check), finding("CONTEXT_PARAMETER_PROOF_FAILED", "type:src/ctx.ts#Ctx"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(check), finding("CONTEXT_PARAMETER_INVALID", "symbol:create:parameter:other"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(check), finding("TENANT_PARAMETER_MISSING", "symbol:create"))).toBe("rule_code_mismatch");
+  });
+
+  it("accepts string-literal method names and colon-bearing required keys that the validator can legitimately emit", () => {
+    const context = { files: ["**/*.ts"], kind: "require-context-parameter", parameter: "ctx", symbols: "*" };
+    expect(findingCompatibilityReason(policy(context), finding("CONTEXT_PARAMETER_INVALID", "symbol:Api.create-user:parameter:ctx"))).toBeNull();
+    expect(findingCompatibilityReason(policy(context), finding("CONTEXT_PARAMETER_INVALID", "symbol:Api..broken:parameter:ctx"))).toBe("rule_subject_mismatch");
+    const tenant = { files: ["**/*.ts"], kind: "require-tenant-parameter", parameter: "workspaceId", symbols: "*" };
+    expect(findingCompatibilityReason(policy(tenant), finding("TENANT_PARAMETER_MISSING", "symbol:handlers.list-all"))).toBeNull();
+    const colonKeys = { ...REG, requiredKeys: ["io:mode"] };
+    expect(findingCompatibilityReason(policy(colonKeys), finding("CLOSED_REGISTRY_ENTRY_INVALID", "registry:TOOL_POLICY:entry:x:io:mode"))).toBeNull();
+    expect(findingCompatibilityReason(policy(colonKeys), finding("CLOSED_REGISTRY_ENTRY_INVALID", "registry:TOOL_POLICY:entry:x:mode"))).toBe("rule_subject_mismatch");
+  });
+
+  it("rejects closed-registry subjects with unknown keys, other exports, or malformed ids", () => {
+    expect(findingCompatibilityReason(policy(REG), finding("CLOSED_REGISTRY_ENTRY_INVALID", "registry:TOOL_POLICY:entry:read:authority"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(REG), finding("UNREGISTERED_DECLARATION", "registry:OTHER:declaration:search"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(REG), finding("CLOSED_REGISTRY_PROOF_FAILED", "registry:TOOL_POLICY:proof:bad id!"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(REG), finding("UNREGISTERED_DECLARATION", "registry:TOOL_POLICY:proof:search"))).toBe("rule_subject_mismatch");
+  });
+
+  it("rejects property-write subjects naming another type, file, or property", () => {
+    expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_DENIED", "property:src/domain/job.ts#Job.retries"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_DENIED", "property:src/domain/task.ts#Job.status"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_PROOF_FAILED", "property:src/domain/job.ts#Task.status"))).toBe("rule_subject_mismatch");
   });
 
   it("allows parse failures only for error-level resolved rules", () => {

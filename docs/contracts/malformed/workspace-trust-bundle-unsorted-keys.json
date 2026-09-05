@@ -1,0 +1,30 @@
+{
+  "apiVersion": "kernel-zero.dev/custody/v1",
+  "kind": "WorkspaceTrustBundle",
+  "workspace": "0195f000-0000-7000-8000-000000000002",
+  "revision": 1,
+  "keys": [
+    {
+      "keyId": "zeta",
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "validFrom": "2026-01-01T00:00:00.000Z",
+      "validUntil": null,
+      "revokedFrom": null
+    },
+    {
+      "keyId": "alpha",
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "validFrom": "2026-01-01T00:00:00.000Z",
+      "validUntil": null,
+      "revokedFrom": null
+    }
+  ],
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  }
+}

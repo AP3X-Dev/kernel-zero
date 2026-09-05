@@ -11,7 +11,7 @@ Invoke `kz-grill` first. Its ADR must say which branch.
 
 ## Branch A: new rule, existing kind
 
-Existing kinds: `forbid-import-edge`, `require-import`, `restrict-call-site`, `require-export-keys`, `require-tenant-parameter`, `require-boundary-parse`, `require-governed-operation`. Schema: `packages/profile-software-architecture/src/policy.ts`.
+Existing kinds: `forbid-import-edge`, `require-import`, `restrict-call-site`, `require-export-keys`, `require-tenant-parameter`, `require-boundary-parse`, `require-governed-operation`, `require-context-parameter`, `require-closed-registry`, `restrict-property-write`. Schema: `packages/profile-software-architecture/src/policy.ts`.
 
 1. Add the rule object to `kernel-zero.policy.json` with `id`, `title`, `level`, `check`, `remediation`. Rule IDs are slugs, 3 to 80 chars, unique.
 2. Prove it bites: introduce the violation on purpose in one file, run `npm run validator:self`, expect exit 1 and one finding with your rule ID. Revert the violation.
