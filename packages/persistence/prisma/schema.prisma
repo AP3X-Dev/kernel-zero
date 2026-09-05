@@ -105,6 +105,7 @@ model User {
   decidedExceptions   ExceptionRequest[]   @relation("ExceptionDecider")
   revokedExceptions   ExceptionRequest[]   @relation("ExceptionRevoker")
   signingKeys         SigningKey[]
+  policyAuthorityKeys PolicyAuthorityKey[]
   evidenceRuns        EvidenceRun[]
   trialFingerprints   TrialFingerprint[]
   auditRecords        AuditRecord[]
@@ -158,21 +159,23 @@ model Verification {
 }
 
 model Workspace {
-  id                   String                  @id @db.Uuid
-  slug                 String                  @unique @db.VarChar(48)
-  name                 String                  @db.VarChar(120)
-  logoUrl              String?                 @db.VarChar(2048)
-  ownerMembershipId    String                  @unique @db.Uuid
-  stripeCustomerId     String?                 @unique @db.VarChar(255)
-  createdAt            DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime                @updatedAt @db.Timestamptz(3)
-  ownerMembership      Membership              @relation("WorkspaceOwner", fields: [ownerMembershipId], references: [id], onDelete: Restrict)
-  memberships          Membership[]            @relation("WorkspaceMemberships")
+  id                   String                   @id @db.Uuid
+  slug                 String                   @unique @db.VarChar(48)
+  name                 String                   @db.VarChar(120)
+  logoUrl              String?                  @db.VarChar(2048)
+  ownerMembershipId    String                   @unique @db.Uuid
+  stripeCustomerId     String?                  @unique @db.VarChar(255)
+  createdAt            DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                 @updatedAt @db.Timestamptz(3)
+  ownerMembership      Membership               @relation("WorkspaceOwner", fields: [ownerMembershipId], references: [id], onDelete: Restrict)
+  memberships          Membership[]             @relation("WorkspaceMemberships")
   roleProfiles         RoleProfile[]
   invitations          Invitation[]
   policyPacks          PolicyPack[]
   exceptionRequests    ExceptionRequest[]
   signingKeys          SigningKey[]
+  policyAuthorityKeys  PolicyAuthorityKey[]
+  policyApprovals      PolicyApprovalArtifact[]
   evidenceRuns         EvidenceRun[]
   quotaCounters        QuotaCounter[]
   subscription         SubscriptionProjection?
@@ -257,21 +260,22 @@ model PolicyPack {
 }
 
 model PolicyRevision {
-  id            String              @id @db.Uuid
-  workspaceId   String              @db.Uuid
-  packId        String              @db.Uuid
-  revision      Int
-  authorId      String              @db.Uuid
-  canonicalJson String              @db.Text
-  digest        String?             @db.Char(71)
-  state         PolicyRevisionState @default(draft)
-  approverId    String?             @db.Uuid
-  approvedAt    DateTime?           @db.Timestamptz(3)
-  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
-  pack          PolicyPack          @relation("PackRevisions", fields: [packId], references: [id], onDelete: Cascade)
-  activeForPack PolicyPack?         @relation("ActivePolicyRevision")
-  author        User                @relation("RevisionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  approver      User?               @relation("RevisionApprover", fields: [approverId], references: [id], onDelete: Restrict)
+  id                String                   @id @db.Uuid
+  workspaceId       String                   @db.Uuid
+  packId            String                   @db.Uuid
+  revision          Int
+  authorId          String                   @db.Uuid
+  canonicalJson     String                   @db.Text
+  digest            String?                  @db.Char(71)
+  state             PolicyRevisionState      @default(draft)
+  approverId        String?                  @db.Uuid
+  approvedAt        DateTime?                @db.Timestamptz(3)
+  createdAt         DateTime                 @default(now()) @db.Timestamptz(3)
+  pack              PolicyPack               @relation("PackRevisions", fields: [packId], references: [id], onDelete: Cascade)
+  activeForPack     PolicyPack?              @relation("ActivePolicyRevision")
+  author            User                     @relation("RevisionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  approver          User?                    @relation("RevisionApprover", fields: [approverId], references: [id], onDelete: Restrict)
+  approvalArtifacts PolicyApprovalArtifact[]
 
   @@unique([packId, revision], map: "policy_revision_pack_revision_key")
   @@unique([workspaceId, digest], map: "policy_revision_workspace_digest_key")
@@ -324,6 +328,48 @@ model SigningKey {
 
   @@unique([workspaceId, keyId], map: "signing_key_workspace_key_key")
   @@index([workspaceId, active], map: "signing_key_workspace_active_idx")
+}
+
+/// Workspace policy-authority public keys: a trust domain separate from evidence SigningKey.
+/// Only public material and the authority timeline are stored; there is no private key column.
+model PolicyAuthorityKey {
+  id          String                   @id @db.Uuid
+  workspaceId String                   @db.Uuid
+  keyId       String                   @db.VarChar(120)
+  publicKeyX  String                   @db.Char(43)
+  label       String                   @db.VarChar(120)
+  validFrom   DateTime                 @db.Timestamptz(3)
+  validUntil  DateTime?                @db.Timestamptz(3)
+  revokedFrom DateTime?                @db.Timestamptz(3)
+  creatorId   String                   @db.Uuid
+  createdAt   DateTime                 @default(now()) @db.Timestamptz(3)
+  workspace   Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creator     User                     @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  approvals   PolicyApprovalArtifact[]
+
+  @@unique([workspaceId, keyId], map: "policy_authority_key_workspace_key_key")
+  @@unique([workspaceId, id], map: "policy_authority_key_workspace_id_key")
+  @@index([workspaceId, validFrom], map: "policy_authority_key_workspace_valid_idx")
+}
+
+/// Immutable signed PolicyApproval artifacts, one per workspace revision.
+model PolicyApprovalArtifact {
+  id             String             @id @db.Uuid
+  workspaceId    String             @db.Uuid
+  revisionId     String             @db.Uuid
+  authorityKeyId String             @db.Uuid
+  policyDigest   String             @db.Char(71)
+  digest         String             @db.Char(71)
+  approvedAt     DateTime           @db.Timestamptz(3)
+  canonicalJson  String             @db.Text
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  revision       PolicyRevision     @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  authorityKey   PolicyAuthorityKey @relation(fields: [workspaceId, authorityKeyId], references: [workspaceId, id], onDelete: Restrict, map: "policy_approval_artifact_workspace_key_fkey")
+
+  @@unique([workspaceId, revisionId], map: "policy_approval_artifact_workspace_revision_key")
+  @@unique([workspaceId, id], map: "policy_approval_artifact_workspace_id_key")
+  @@index([workspaceId, approvedAt], map: "policy_approval_artifact_workspace_approved_idx")
 }
 
 model EvidenceRun {

@@ -71,6 +71,15 @@ export {
   revokeSigningKey,
 } from "./signing-keys";
 export {
+  createPolicyApprovalArtifact,
+  findPolicyApprovalArtifact,
+  listPolicyAuthorityKeys,
+  readWorkspaceTrustBundle,
+  registerPolicyAuthorityKey,
+  revokePolicyAuthorityKey,
+} from "./policy-custody";
+export type { PolicyAuthorityKeySummary } from "./policy-custody";
+export {
   deleteExpiredEvidence,
   listEvidenceFindings,
   listEvidenceRuns,

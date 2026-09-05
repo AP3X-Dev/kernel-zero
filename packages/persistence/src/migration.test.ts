@@ -6,6 +6,10 @@ const migration = readFileSync(
   new URL("../prisma/migrations/20260831050000_initial/migration.sql", import.meta.url),
   "utf8",
 );
+const custodyMigration = readFileSync(
+  new URL("../prisma/migrations/20260904120000_policy_custody/migration.sql", import.meta.url),
+  "utf8",
+);
 
 describe("PostgreSQL migration authority", () => {
   it("declares every required tenant and operational entity", () => {
@@ -55,6 +59,24 @@ describe("PostgreSQL migration authority", () => {
     ]) {
       expect(migration).toContain(authority);
     }
+  });
+
+  it("adds policy custody tables with public-only key material, timeline checks, and immutable artifacts", () => {
+    for (const table of ["PolicyAuthorityKey", "PolicyApprovalArtifact"]) {
+      expect(custodyMigration).toContain(`CREATE TABLE "${table}"`);
+    }
+    for (const authority of [
+      "policy_authority_key_workspace_key_key",
+      "policy_authority_key_validity_check",
+      "policy_authority_key_revocation_check",
+      "policy_authority_key_public_x_check",
+      "policy_approval_artifact_workspace_revision_key",
+      "policy_approval_artifact_workspace_key_fkey",
+      "policy_approval_artifact_immutable_update",
+    ]) {
+      expect(custodyMigration).toContain(authority);
+    }
+    expect(custodyMigration).not.toMatch(/private/iu);
   });
 
   it("keeps audit workspace identity opaque and outside workspace cascade foreign keys", () => {
