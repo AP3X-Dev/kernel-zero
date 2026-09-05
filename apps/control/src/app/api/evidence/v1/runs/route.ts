@@ -1,6 +1,4 @@
-import { resolveCorrelationId } from "@kernel-zero/domain";
-
-import { loadApplicationWorkspace } from "../../../../../server/application/workspace-view";
+import { resolveRequestContext } from "../../../../../server/authorization/request-context";
 import { EvidenceIngressError } from "../../../../../server/evidence/errors";
 import type { EvidenceActor, EvidenceSubmissionResult } from "../../../../../server/evidence/evidence-service";
 import { EvidenceService } from "../../../../../server/evidence/evidence-service";
@@ -50,23 +48,10 @@ export function createEvidencePostHandler(dependencies: EvidenceRouteDependencie
 
 const productionDependencies: EvidenceRouteDependencies = Object.freeze({
   async resolveSubmission(request) {
-    const runtime = getRuntime();
-    const session = await runtime.auth.api.getSession({ headers: request.headers });
-    if (session === null) return null;
-    const selected = "selectedWorkspaceId" in session.session && typeof session.session.selectedWorkspaceId === "string"
-      ? session.session.selectedWorkspaceId
-      : null;
-    const context = await loadApplicationWorkspace(runtime.prisma, session.user.id, selected);
-    if (context === null) throw new EvidenceIngressError(403, "WORKSPACE_REQUIRED", "workspace_required");
-    return {
-      actor: {
-        capabilityDocument: context.membership.roleProfile?.capabilityDocument ?? null,
-        isOwner: context.membership.isOwner,
-        userId: session.user.id,
-      },
-      correlationId: resolveCorrelationId(request.headers.get("x-correlation-id")).id,
-      workspaceId: context.workspace.id,
-    };
+    const resolution = await resolveRequestContext(request);
+    if (resolution.kind === "unauthenticated") return null;
+    if (resolution.kind === "workspace-required") throw new EvidenceIngressError(403, "WORKSPACE_REQUIRED", "workspace_required");
+    return resolution.context;
   },
   service: Object.freeze({
     submit(input: Parameters<EvidenceRouteDependencies["service"]["submit"]>[0]) {

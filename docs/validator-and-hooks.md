@@ -51,6 +51,10 @@ the rules. Adopt it with these boundaries:
   bundle before validation starts and passes it as `--workspace-trust`; the
   validator itself never fetches trust from the network, environment, keychain,
   or repository. Treat the bundle like the policy: reviewed, pinned, protected.
+  The control plane serves the current bundle to an authenticated member with
+  policy read access at `GET /api/custody/v1/trust-bundle` (media type
+  `application/vnd.kernel-zero.workspace-trust+json;version=1`, never cached);
+  the policy custody settings page shows the same JSON for copying.
 - **Approval-time semantics.** Authority is judged only at the artifact's signed
   `approvedAt`: a key must be valid from before that instant, not expired at it,
   and not revoked from at or before it. Revoking a key is retroactive from

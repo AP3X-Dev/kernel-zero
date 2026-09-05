@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -20,6 +20,21 @@ function isDirectoryStillHeld(error: unknown): boolean {
   return code === "EBUSY" || code === "ENOTEMPTY" || code === "EPERM";
 }
 
+/**
+ * A run that is killed before teardown (a hard timeout, a stuck close) can leave the embedded
+ * postgres alive holding its shared memory, and the next run then fails to start. Stop any such
+ * process that belongs to this repository's embedded binary before initialising a fresh one.
+ */
+function stopStaleEmbeddedPostgres(): void {
+  const marker = resolve("node_modules", "@embedded-postgres").replaceAll("\\", "/");
+  if (process.platform === "win32") {
+    const script = `Get-CimInstance Win32_Process -Filter "name='postgres.exe'" | Where-Object { $_.CommandLine -ne $null -and $_.CommandLine.Replace('\\','/') -like '*${marker}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
+    spawnSync("powershell", ["-NoProfile", "-Command", script], { stdio: "ignore" });
+    return;
+  }
+  spawnSync("pkill", ["-f", marker], { stdio: "ignore" });
+}
+
 function migrate(databaseUrl: string): void {
   execFileSync(process.execPath, [PRISMA_CLI, "migrate", "deploy", "--schema", SCHEMA], {
     env: { ...process.env, DATABASE_URL: databaseUrl },
@@ -33,6 +48,7 @@ export default async function globalSetup(): Promise<(() => Promise<void>) | und
     migrate(isolatedTestDatabaseUrl());
     return undefined;
   }
+  stopStaleEmbeddedPostgres();
   rmSync(DATA_DIR, { force: true, recursive: true });
   const server = new EmbeddedPostgres({
     databaseDir: DATA_DIR,

@@ -148,7 +148,7 @@ export default async function PolicyCustodyPage({ searchParams }: CustodyPagePro
           <form action={revokeKeyAction} className="panel">
             <h2>Revoke an authority key</h2>
             <p>Revocation is retroactive from now: approvals signed with this key at or after this instant stop verifying. Type the key ID twice to confirm.</p>
-            <label htmlFor="custody-revoke-id">Key ID</label>
+            <label htmlFor="custody-revoke-id">Key ID to revoke</label>
             <input id="custody-revoke-id" maxLength={120} name="keyId" required type="text" />
             <label htmlFor="custody-revoke-confirm">Confirm key ID</label>
             <input id="custody-revoke-confirm" maxLength={120} name="confirmKeyId" required type="text" />
