@@ -37,6 +37,16 @@ describe("policy application service", () => {
     expect(approve).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ actorUserId: "checker" }));
   });
 
+  it("gates approval with custody behind the approve capability and hands the signer through untouched", async () => {
+    const approveWithCustody = vi.fn().mockResolvedValue({ approval: { approvalId: "a" }, created: true });
+    const service = new PolicyService({} as never, { approveWithCustody } as never);
+    const signer = { keyId: "authority-1", sign: vi.fn() };
+    await expect(service.approveWithCustody({ actor: actor(["policy.read"]), correlationId: "correlation", keyId: "authority-1", revisionId: "revision", signer, workspaceId: "workspace" })).rejects.toThrow("FORBIDDEN");
+    expect(approveWithCustody).not.toHaveBeenCalled();
+    await expect(service.approveWithCustody({ actor: actor(["policy.approve"], "checker"), correlationId: "correlation", keyId: "authority-1", revisionId: "revision", signer, workspaceId: "workspace" })).resolves.toEqual({ approval: { approvalId: "a" }, created: true });
+    expect(approveWithCustody).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ actorUserId: "checker", keyId: "authority-1", signer }));
+  });
+
   it("refuses to persist a document no registered profile accepts", async () => {
     const create = vi.fn();
     const save = vi.fn();

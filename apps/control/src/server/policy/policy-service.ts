@@ -4,10 +4,12 @@ import type { PolicyRuleDiff } from "@kernel-zero/contracts";
 import {
   activatePolicyRevision,
   approvePolicyRevision,
+  approvePolicyRevisionWithCustody,
   createPolicyPack,
   retirePolicyPack,
   savePolicyDraft,
   type PersistenceClient,
+  type PolicyAuthoritySigner,
 } from "@kernel-zero/persistence";
 import { parsePolicyDocument } from "@kernel-zero/profiles";
 
@@ -18,6 +20,7 @@ export type PolicyActor = WorkspaceAuthoritySource & Readonly<{ userId: string }
 type PolicyOperations = Readonly<{
   activate: typeof activatePolicyRevision;
   approve: typeof approvePolicyRevision;
+  approveWithCustody: typeof approvePolicyRevisionWithCustody;
   create: typeof createPolicyPack;
   retire: typeof retirePolicyPack;
   save: typeof savePolicyDraft;
@@ -26,6 +29,7 @@ type PolicyOperations = Readonly<{
 const defaultOperations: PolicyOperations = Object.freeze({
   activate: activatePolicyRevision,
   approve: approvePolicyRevision,
+  approveWithCustody: approvePolicyRevisionWithCustody,
   create: createPolicyPack,
   retire: retirePolicyPack,
   save: savePolicyDraft,
@@ -43,6 +47,12 @@ export class PolicyService {
   async approve(input: Readonly<{ actor: PolicyActor; correlationId: string; revisionId: string; workspaceId: string }>) {
     authorize(input.actor, "policy.approve");
     return this.#operations.approve(this.#prisma, { actorUserId: input.actor.userId, correlationId: input.correlationId, revisionId: input.revisionId, workspaceId: input.workspaceId });
+  }
+
+  /** Signing is never independently callable: it happens only here, inside the approval transaction. */
+  async approveWithCustody(input: Readonly<{ actor: PolicyActor; correlationId: string; keyId: string; revisionId: string; signer: PolicyAuthoritySigner; workspaceId: string }>) {
+    authorize(input.actor, "policy.approve");
+    return this.#operations.approveWithCustody(this.#prisma, { actorUserId: input.actor.userId, correlationId: input.correlationId, keyId: input.keyId, revisionId: input.revisionId, signer: input.signer, workspaceId: input.workspaceId });
   }
 
   async activate(input: Readonly<{ activePolicyLimit: number | null; actor: PolicyActor; correlationId: string; revisionId: string; workspaceId: string }>): Promise<void> {

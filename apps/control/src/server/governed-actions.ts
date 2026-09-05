@@ -141,6 +141,11 @@ export const GOVERNED_ACTIONS = Object.freeze({
     audit: { actionCode: "policy.revision-approved", description: "Policy revision approved.", subjectType: "policy-revision" },
     capability: "policy.approve", idempotency: "none", quota: null, tenantScope: "workspace", transactionTimeoutMs: 10_000,
   }),
+  // quota is null because approval consumes no plan-limited resource (ADR 2026-09-04, control-plane custody).
+  "policy.approve-with-custody": defineGovernedAction("policy.approve-with-custody", {
+    audit: { actionCode: "policy.revision-approved-with-custody", description: "Policy revision approved with workspace custody.", subjectType: "policy-revision" },
+    capability: "policy.approve", idempotency: "idempotent", quota: null, tenantScope: "workspace", transactionTimeoutMs: 10_000,
+  }),
   "policy.retire": defineGovernedAction("policy.retire", {
     audit: { actionCode: "policy.pack-retired", description: "Policy pack retired.", subjectType: "policy-pack" },
     capability: "policy.retire", idempotency: "idempotent", quota: null, tenantScope: "workspace", transactionTimeoutMs: 10_000,

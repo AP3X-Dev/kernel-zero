@@ -1,17 +1,29 @@
 import "server-only";
 
-import { createPublicKey } from "node:crypto";
+import { createPublicKey, verify } from "node:crypto";
 
 import {
   PolicyApprovalSchema,
   createWorkspaceTrustBundle,
+  policyApprovalDigest,
   type PolicyApproval,
   type WorkspaceTrustBundle,
 } from "@kernel-zero/contracts";
-import { canonicalJson, generateUuidV7 } from "@kernel-zero/domain";
+import { canonicalJson, digestBytes, generateUuidV7 } from "@kernel-zero/domain";
 
 import { createAuditRepository } from "./audit";
 import type { PersistenceClient, TransactionClient } from "./client";
+import { freezeDraftRevision } from "./policies";
+
+/**
+ * A local signer for one workspace authority key. It never exposes private material to the
+ * repository; the repository only asks it to sign a digest and then verifies the result
+ * against the stored public coordinate before anything is persisted.
+ */
+export type PolicyAuthoritySigner = Readonly<{
+  keyId: string;
+  sign(digest: Uint8Array): Promise<Uint8Array>;
+}>;
 
 type CustodyActorInput = Readonly<{ actorUserId: string; correlationId: string; workspaceId: string }>;
 
@@ -107,13 +119,11 @@ export async function findPolicyApprovalArtifact(client: PersistenceClient | Tra
  * Persist a signed approval inside the caller's transaction. A retry for the same revision returns the
  * stored artifact unchanged; a different artifact for the same revision is a conflict, never a rewrite.
  */
-export async function createPolicyApprovalArtifact(tx: TransactionClient, input: Readonly<{
-  approval: PolicyApproval;
+export async function createPolicyApprovalArtifact(tx: TransactionClient, approval: PolicyApproval, input: Readonly<{
   authorityKeyId: string;
   revisionId: string;
   workspaceId: string;
 }>): Promise<Readonly<{ approvalId: string; created: boolean }>> {
-  const approval = PolicyApprovalSchema.parse(input.approval);
   if (approval.workspace !== input.workspaceId) throw failure("VALIDATION_FAILED", "approval_workspace");
   const existing = await tx.policyApprovalArtifact.findFirst({ where: { revisionId: input.revisionId, workspaceId: input.workspaceId } });
   if (existing !== null) {
@@ -128,6 +138,65 @@ export async function createPolicyApprovalArtifact(tx: TransactionClient, input:
   return Object.freeze({ approvalId: created.id, created: true });
 }
 
+/**
+ * Approve a draft revision and file its signed custody artifact in one transaction. Maker-checker,
+ * authority validity at one database-sourced time, signing, signature self-verification, artifact
+ * persistence, and audit all commit together or not at all. A retry for an already custody-approved
+ * revision returns the stored artifact and never signs again.
+ */
+export async function approvePolicyRevisionWithCustody(client: PersistenceClient, input: CustodyActorInput & Readonly<{
+  keyId: string;
+  revisionId: string;
+  signer: PolicyAuthoritySigner;
+}>): Promise<Readonly<{ approval: PolicyApproval; created: boolean }>> {
+  if (input.signer.keyId !== input.keyId) throw failure("FORBIDDEN", "signer_key_mismatch");
+  return client.$transaction(async (tx) => {
+    const revision = await tx.policyRevision.findFirst({ where: { id: input.revisionId, workspaceId: input.workspaceId } });
+    if (revision === null) throw failure("NOT_FOUND", "revision");
+    if (revision.state !== "draft") {
+      const existing = await findPolicyApprovalArtifact(tx, { revisionId: input.revisionId, workspaceId: input.workspaceId });
+      if (existing !== null) return Object.freeze({ approval: existing, created: false });
+      throw failure("CONFLICT", "approved_without_custody");
+    }
+    const key = await tx.policyAuthorityKey.findFirst({ where: { keyId: input.keyId, workspaceId: input.workspaceId } });
+    if (key === null) throw failure("NOT_FOUND", "authority_key");
+    const [clock] = await tx.$queryRaw<{ now: Date }[]>`SELECT now() AS now`;
+    if (clock === undefined) throw failure("CONFLICT", "database_clock");
+    const approvedAt = clock.now;
+    const authorized = key.validFrom.getTime() <= approvedAt.getTime()
+      && (key.validUntil === null || approvedAt.getTime() <= key.validUntil.getTime())
+      && (key.revokedFrom === null || approvedAt.getTime() < key.revokedFrom.getTime());
+    if (!authorized) throw failure("FORBIDDEN", "authority_not_valid");
+
+    const frozen = await freezeDraftRevision(tx, { ...input, approvedAt });
+    const unsigned = {
+      apiVersion: "kernel-zero.dev/custody/v1" as const,
+      kind: "PolicyApproval" as const,
+      workspace: input.workspaceId,
+      policy: { digest: frozen.digest, kind: frozen.kind, name: frozen.name, revision: frozen.revision },
+      approvalId: generateUuidV7(approvedAt.getTime()),
+      authorId: frozen.authorId,
+      approverId: input.actorUserId,
+      approvedAt: approvedAt.toISOString(),
+    };
+    const digest = policyApprovalDigest(unsigned);
+    const signature = Buffer.from(await input.signer.sign(digestBytes(digest)));
+    const approval = PolicyApprovalSchema.parse({
+      ...unsigned,
+      integrity: { algorithm: "sha256", digest },
+      signature: { algorithm: "ed25519", keyId: key.keyId, value: signature.toString("base64") },
+    });
+    const publicKey = createPublicKey({ format: "jwk", key: { crv: "Ed25519", kty: "OKP", x: key.publicKeyX } });
+    if (!verify(null, digestBytes(digest), publicKey, signature)) throw failure("CONFLICT", "signature_invalid");
+
+    const stored = await createPolicyApprovalArtifact(tx, approval, { authorityKeyId: key.id, revisionId: input.revisionId, workspaceId: input.workspaceId });
+    await appendAudit(tx, input, "policy.revision-approved-with-custody", input.revisionId, {
+      approvalId: stored.approvalId, digest: frozen.digest, keyId: key.keyId, revision: String(frozen.revision),
+    }, "policy-revision");
+    return Object.freeze({ approval, created: stored.created });
+  });
+}
+
 function normalizeEd25519PublicX(value: string): string {
   const x = value.trim();
   if (!PUBLIC_X.test(x) || x.includes("PRIVATE")) throw failure("VALIDATION_FAILED", "publicKeyX");
@@ -140,8 +209,8 @@ function normalizeEd25519PublicX(value: string): string {
   return x;
 }
 
-async function appendAudit(tx: Parameters<typeof createAuditRepository>[0], input: CustodyActorInput, actionCode: string, subjectId: string, metadata: Record<string, string>): Promise<void> {
-  await createAuditRepository(tx).append({ actionCode, actor: { kind: "user", userId: input.actorUserId }, correlationId: input.correlationId, description: actionCode.replaceAll(".", " "), metadata, subjectId, subjectType: "policy-authority-key", workspaceOpaqueId: input.workspaceId });
+async function appendAudit(tx: Parameters<typeof createAuditRepository>[0], input: CustodyActorInput, actionCode: string, subjectId: string, metadata: Record<string, string>, subjectType = "policy-authority-key"): Promise<void> {
+  await createAuditRepository(tx).append({ actionCode, actor: { kind: "user", userId: input.actorUserId }, correlationId: input.correlationId, description: actionCode.replaceAll(".", " "), metadata, subjectId, subjectType, workspaceOpaqueId: input.workspaceId });
 }
 
 function failure(code: string, reason: string): Error { return new Error(`${code}:${reason}`); }

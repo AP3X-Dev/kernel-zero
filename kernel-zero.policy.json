@@ -7,9 +7,20 @@
     "description": "Deterministic architecture rules for the KERNEL ZERO repository."
   },
   "scope": {
-    "languages": ["typescript", "tsx"],
-    "include": ["apps/**/*.ts", "apps/**/*.tsx", "packages/**/*.ts"],
-    "exclude": ["**/*.test.ts", "**/fixtures/**", "packages/persistence/src/client.ts"]
+    "languages": [
+      "typescript",
+      "tsx"
+    ],
+    "include": [
+      "apps/**/*.ts",
+      "apps/**/*.tsx",
+      "packages/**/*.ts"
+    ],
+    "exclude": [
+      "**/*.test.ts",
+      "**/fixtures/**",
+      "packages/persistence/src/client.ts"
+    ]
   },
   "rules": [
     {
@@ -18,7 +29,10 @@
       "level": "error",
       "check": {
         "kind": "require-import",
-        "files": ["apps/control/src/server/**/*.ts", "packages/persistence/src/**/*.ts"],
+        "files": [
+          "apps/control/src/server/**/*.ts",
+          "packages/persistence/src/**/*.ts"
+        ],
         "module": "server-only",
         "allowTypeOnly": false
       },
@@ -30,8 +44,14 @@
       "level": "error",
       "check": {
         "kind": "forbid-import-edge",
-        "from": ["apps/control/src/app/**/page.tsx", "apps/control/src/app/**/layout.tsx"],
-        "deny": ["module:@kernel-zero/persistence", "module:@prisma/client"]
+        "from": [
+          "apps/control/src/app/**/page.tsx",
+          "apps/control/src/app/**/layout.tsx"
+        ],
+        "deny": [
+          "module:@kernel-zero/persistence",
+          "module:@prisma/client"
+        ]
       },
       "remediation": "Move persistence access behind a server application service."
     },
@@ -41,8 +61,13 @@
       "level": "error",
       "check": {
         "kind": "forbid-import-edge",
-        "from": ["apps/control/src/app/api/**/*.ts"],
-        "deny": ["module:@kernel-zero/persistence", "module:@prisma/client"]
+        "from": [
+          "apps/control/src/app/api/**/*.ts"
+        ],
+        "deny": [
+          "module:@kernel-zero/persistence",
+          "module:@prisma/client"
+        ]
       },
       "remediation": "Parse at ingress and call one application service."
     },
@@ -52,9 +77,15 @@
       "level": "error",
       "check": {
         "kind": "require-boundary-parse",
-        "files": ["apps/control/src/server/evidence/evidence-service.ts"],
-        "boundaryCalls": ["verifyEvidenceAttestation"],
-        "parserCalls": ["profile.evidenceSchema.safeParse"]
+        "files": [
+          "apps/control/src/server/evidence/evidence-service.ts"
+        ],
+        "boundaryCalls": [
+          "verifyEvidenceAttestation"
+        ],
+        "parserCalls": [
+          "profile.evidenceSchema.safeParse"
+        ]
       },
       "remediation": "Pass only a value proven by the strict evidence schema to the service."
     },
@@ -64,7 +95,9 @@
       "level": "error",
       "check": {
         "kind": "require-tenant-parameter",
-        "files": ["packages/persistence/src/tenancy.ts"],
+        "files": [
+          "packages/persistence/src/tenancy.ts"
+        ],
         "symbols": "tenantSelector",
         "parameter": "workspaceId"
       },
@@ -76,10 +109,20 @@
       "level": "error",
       "check": {
         "kind": "require-governed-operation",
-        "files": ["apps/control/src/server/governed-actions.ts"],
+        "files": [
+          "apps/control/src/server/governed-actions.ts"
+        ],
         "registryExport": "GOVERNED_ACTIONS",
-        "requiredKeys": ["capability", "tenantScope", "quota", "audit", "idempotency"],
-        "declarationCalls": ["defineGovernedAction"]
+        "requiredKeys": [
+          "capability",
+          "tenantScope",
+          "quota",
+          "audit",
+          "idempotency"
+        ],
+        "declarationCalls": [
+          "defineGovernedAction"
+        ]
       },
       "remediation": "Declare every governed action through the closed registry contract."
     },
@@ -89,8 +132,16 @@
       "level": "error",
       "check": {
         "kind": "forbid-import-edge",
-        "from": ["apps/**/*.ts", "apps/**/*.tsx", "packages/contracts/**/*.ts", "packages/domain/**/*.ts", "packages/validator/**/*.ts"],
-        "deny": ["module:@prisma/client"]
+        "from": [
+          "apps/**/*.ts",
+          "apps/**/*.tsx",
+          "packages/contracts/**/*.ts",
+          "packages/domain/**/*.ts",
+          "packages/validator/**/*.ts"
+        ],
+        "deny": [
+          "module:@prisma/client"
+        ]
       },
       "remediation": "Use the tenant-scoped persistence package instead of the raw client."
     },
@@ -100,10 +151,54 @@
       "level": "error",
       "check": {
         "kind": "forbid-import-edge",
-        "from": ["packages/domain/**/*.ts", "packages/contracts/**/*.ts", "packages/persistence/**/*.ts"],
-        "deny": ["module:@kernel-zero/profiles", "module:@kernel-zero/profile-software-architecture", "module:@kernel-zero/profile-manifest"]
+        "from": [
+          "packages/domain/**/*.ts",
+          "packages/contracts/**/*.ts",
+          "packages/persistence/**/*.ts"
+        ],
+        "deny": [
+          "module:@kernel-zero/profiles",
+          "module:@kernel-zero/profile-software-architecture",
+          "module:@kernel-zero/profile-manifest"
+        ]
       },
       "remediation": "Move profile-specific logic behind the Profile interface and look it up through @kernel-zero/profiles from the control application."
+    },
+    {
+      "id": "validator-stays-network-and-database-free",
+      "title": "The standalone validator never depends on the control plane",
+      "level": "error",
+      "check": {
+        "kind": "forbid-import-edge",
+        "from": [
+          "packages/validator/**/*.ts"
+        ],
+        "deny": [
+          "module:@kernel-zero/persistence",
+          "module:@kernel-zero/profiles",
+          "module:@prisma/client",
+          "module-prefix:next"
+        ]
+      },
+      "remediation": "Keep the validator on contracts, domain, and its profile; custody proof stays pure and offline."
+    },
+    {
+      "id": "custody-artifacts-are-parsed",
+      "title": "Custody artifacts are strictly parsed before persistence",
+      "level": "error",
+      "check": {
+        "kind": "require-boundary-parse",
+        "files": [
+          "packages/persistence/src/policy-custody.ts"
+        ],
+        "boundaryCalls": [
+          "createPolicyApprovalArtifact"
+        ],
+        "parserCalls": [
+          "PolicyApprovalSchema.parse"
+        ]
+      },
+      "remediation": "Pass only a value proven by PolicyApprovalSchema to the artifact repository."
     }
   ]
 }

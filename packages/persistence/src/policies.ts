@@ -1,9 +1,9 @@
 import "server-only";
 
-import { canonicalJson, generateUuidV7, sha256, type JsonValue } from "@kernel-zero/domain";
+import { canonicalJson, generateUuidV7, sha256, type JsonValue, type Sha256Digest } from "@kernel-zero/domain";
 import { PolicyEnvelopeSchema, type PolicyEnvelope } from "@kernel-zero/contracts";
 
-import type { PersistenceClient } from "./client";
+import type { PersistenceClient, TransactionClient } from "./client";
 import { createAuditRepository } from "./audit";
 import { createQuotaRepository } from "./quota";
 
@@ -69,21 +69,32 @@ export async function savePolicyDraft(client: PersistenceClient, input: PolicyAc
 
 export async function approvePolicyRevision(client: PersistenceClient, input: PolicyActorInput & Readonly<{ revisionId: string }>): Promise<Readonly<{ digest: string }>> {
   return client.$transaction(async (tx) => {
-    const revision = await tx.policyRevision.findFirst({ where: { id: input.revisionId, workspaceId: input.workspaceId } });
-    if (revision?.state !== "draft") throw failure("NOT_FOUND", "revision");
-    if (revision.authorId === input.actorUserId) throw failure("FORBIDDEN", "maker_checker");
-    const document = PolicyEnvelopeSchema.parse(JSON.parse(revision.canonicalJson) as unknown);
-    if (document.metadata.revision !== revision.revision) throw failure("VALIDATION_FAILED", "metadata.revision");
-    const frozenBytes = canonicalPolicyBytes(document);
-    const digest = sha256(frozenBytes);
-    const changed = await tx.policyRevision.updateMany({
-      data: { approvedAt: new Date(), approverId: input.actorUserId, canonicalJson: frozenBytes, digest, state: "approved" },
-      where: { authorId: { not: input.actorUserId }, id: input.revisionId, state: "draft", workspaceId: input.workspaceId },
-    });
-    if (changed.count !== 1) throw failure("CONFLICT", "approval_race");
-    await appendAudit(tx, input, "policy.revision-approved", "policy-revision", input.revisionId, { digest, revision: revision.revision });
-    return Object.freeze({ digest });
+    const approved = await freezeDraftRevision(tx, input);
+    await appendAudit(tx, input, "policy.revision-approved", "policy-revision", input.revisionId, { digest: approved.digest, revision: approved.revision });
+    return Object.freeze({ digest: approved.digest });
   });
+}
+
+export type FrozenRevision = Readonly<{ authorId: string; digest: Sha256Digest; kind: string; name: string; revision: number }>;
+
+/**
+ * The single approval step shared by plain and custody approval: maker-checker, canonical freeze,
+ * digest, and a single-writer state change. Callers own the audit record and any signing.
+ */
+export async function freezeDraftRevision(tx: TransactionClient, input: PolicyActorInput & Readonly<{ approvedAt?: Date; revisionId: string }>): Promise<FrozenRevision> {
+  const revision = await tx.policyRevision.findFirst({ where: { id: input.revisionId, workspaceId: input.workspaceId } });
+  if (revision?.state !== "draft") throw failure("NOT_FOUND", "revision");
+  if (revision.authorId === input.actorUserId) throw failure("FORBIDDEN", "maker_checker");
+  const document = PolicyEnvelopeSchema.parse(JSON.parse(revision.canonicalJson) as unknown);
+  if (document.metadata.revision !== revision.revision) throw failure("VALIDATION_FAILED", "metadata.revision");
+  const frozenBytes = canonicalPolicyBytes(document);
+  const digest = sha256(frozenBytes);
+  const changed = await tx.policyRevision.updateMany({
+    data: { approvedAt: input.approvedAt ?? new Date(), approverId: input.actorUserId, canonicalJson: frozenBytes, digest, state: "approved" },
+    where: { authorId: { not: input.actorUserId }, id: input.revisionId, state: "draft", workspaceId: input.workspaceId },
+  });
+  if (changed.count !== 1) throw failure("CONFLICT", "approval_race");
+  return Object.freeze({ authorId: revision.authorId, digest, kind: document.kind, name: document.metadata.name, revision: revision.revision });
 }
 
 export async function activatePolicyRevision(client: PersistenceClient, input: PolicyActorInput & Readonly<{

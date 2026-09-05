@@ -5,6 +5,7 @@ import { createSignedPolicyApproval, verifyPolicyCustody, type PolicyApproval } 
 import { generateUuidV7 } from "@kernel-zero/domain";
 import {
   approvePolicyRevision,
+  approvePolicyRevisionWithCustody,
   createPersistenceClient,
   createPolicyApprovalArtifact,
   createPolicyPack,
@@ -87,20 +88,44 @@ describe("Gate 5 isolated PostgreSQL policy custody", () => {
 
   it("stores one immutable artifact per revision, returns it on identical retry, and lets exactly one concurrent writer win", async () => {
     const signed = approval();
-    const input = { approval: signed, authorityKeyId, revisionId, workspaceId };
+    void signed;
+    const input = { authorityKeyId, revisionId, workspaceId };
     const outcomes = await Promise.allSettled(Array.from({ length: 5 }, () =>
-      prisma.$transaction((tx) => createPolicyApprovalArtifact(tx, { ...input, approval: approval() }), { isolationLevel: "Serializable" })));
+      prisma.$transaction((tx) => createPolicyApprovalArtifact(tx, approval(), input), { isolationLevel: "Serializable" })));
     const fulfilled = outcomes.filter((outcome) => outcome.status === "fulfilled");
     expect(fulfilled.length).toBeGreaterThanOrEqual(1);
     await expect(prisma.policyApprovalArtifact.count({ where: { revisionId, workspaceId } })).resolves.toBe(1);
 
     const stored = await findPolicyApprovalArtifact(prisma, { revisionId, workspaceId });
     if (stored === null) throw new Error("Expected the stored artifact.");
-    await expect(prisma.$transaction((tx) => createPolicyApprovalArtifact(tx, { ...input, approval: stored }))).resolves.toEqual({ approvalId: stored.approvalId, created: false });
-    await expect(prisma.$transaction((tx) => createPolicyApprovalArtifact(tx, { ...input, approval: approval() }))).rejects.toThrow("approval_artifact_exists");
+    await expect(prisma.$transaction((tx) => createPolicyApprovalArtifact(tx, stored, input))).resolves.toEqual({ approvalId: stored.approvalId, created: false });
+    await expect(prisma.$transaction((tx) => createPolicyApprovalArtifact(tx, approval(), input))).rejects.toThrow("approval_artifact_exists");
     await expect(prisma.policyApprovalArtifact.update({ data: { approvedAt: new Date() }, where: { id: stored.approvalId } })).rejects.toBeDefined();
     await expect(findPolicyApprovalArtifact(prisma, { revisionId, workspaceId: siblingWorkspaceId })).resolves.toBeNull();
-    await expect(prisma.$transaction((tx) => createPolicyApprovalArtifact(tx, { ...input, workspaceId: siblingWorkspaceId, approval: approval({ workspace: siblingWorkspaceId }) }))).rejects.toBeDefined();
+    await expect(prisma.$transaction((tx) => createPolicyApprovalArtifact(tx, approval({ workspace: siblingWorkspaceId }), { ...input, workspaceId: siblingWorkspaceId }))).rejects.toBeDefined();
+  });
+
+  it("approves a fresh draft with custody end to end: one transaction, verifiable artifact, idempotent retry", async () => {
+    const { privateKey: signingKey, publicKey: signingPublic } = generateKeyPairSync("ed25519");
+    const x = signingPublic.export({ format: "jwk" }).x ?? "";
+    await registerPolicyAuthorityKey(prisma, { actorUserId: authorId, correlationId, keyId: "gate5-signer", label: "Signer", publicKeyX: x, validFrom: new Date("2026-01-01T00:00:00.000Z"), validUntil: null, workspaceId });
+    const { revisionId: draftId } = await createPolicyPack(prisma, {
+      actorUserId: authorId, correlationId, description: "Gate 5 custody draft", displayName: "Gate Five Draft",
+      document: { ...document, metadata: { ...document.metadata, name: "gate-five-draft" } }, slug: "gate-five-draft", workspaceId,
+    });
+    const { sign } = await import("node:crypto");
+    const signer = { keyId: "gate5-signer", sign: (digest: Uint8Array) => Promise.resolve(new Uint8Array(sign(null, digest, signingKey))) };
+    const first = await approvePolicyRevisionWithCustody(prisma, { actorUserId: checkerId, correlationId, keyId: "gate5-signer", revisionId: draftId, signer, workspaceId });
+    expect(first.created).toBe(true);
+    await expect(prisma.policyRevision.findUniqueOrThrow({ where: { id: draftId } })).resolves.toMatchObject({ approverId: checkerId, state: "approved", approvedAt: new Date(first.approval.approvedAt) });
+    const trust = await readWorkspaceTrustBundle(prisma, workspaceId);
+    if (trust === null) throw new Error("Expected a trust bundle.");
+    const custody = verifyPolicyCustody({ approval: first.approval, policy: first.approval.policy, toolVersion: "0.1.0", trust, workspace: workspaceId });
+    expect(custody.result).toEqual({ status: "pass", errors: 0 });
+    const retry = await approvePolicyRevisionWithCustody(prisma, { actorUserId: checkerId, correlationId, keyId: "gate5-signer", revisionId: draftId, signer, workspaceId });
+    expect(retry).toEqual({ approval: first.approval, created: false });
+    await expect(prisma.policyApprovalArtifact.count({ where: { revisionId: draftId, workspaceId } })).resolves.toBe(1);
+    await expect(approvePolicyRevisionWithCustody(prisma, { actorUserId: authorId, correlationId, keyId: "gate5-signer", revisionId: draftId, signer, workspaceId: siblingWorkspaceId })).rejects.toThrow("NOT_FOUND");
   });
 
   it("revokes retroactively and the trust bundle revision advances so later verification fails at the signed time", async () => {
@@ -108,7 +133,7 @@ describe("Gate 5 isolated PostgreSQL policy custody", () => {
     await expect(revokePolicyAuthorityKey(prisma, { actorUserId: authorId, correlationId, keyId: "gate5-authority", revokedFrom: new Date("2026-09-01T00:00:00.000Z"), workspaceId })).resolves.toEqual({ revoked: true });
     const trust = await readWorkspaceTrustBundle(prisma, workspaceId);
     if (trust === null) throw new Error("Expected a trust bundle.");
-    expect(trust.revision).toBe(2);
+    expect(trust.revision).toBe(3);
     const stored = await findPolicyApprovalArtifact(prisma, { revisionId, workspaceId });
     if (stored === null) throw new Error("Expected the stored artifact.");
     const custody = verifyPolicyCustody({ approval: stored, policy: { digest: policyDigest as `sha256:${string}`, kind: "RepositoryPolicy", name: "gate-five-policy", revision: 1 }, toolVersion: "0.1.0", trust, workspace: workspaceId });
