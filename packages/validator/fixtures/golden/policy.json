@@ -1,0 +1,171 @@
+{
+  "apiVersion": "kernel-zero.dev/v1",
+  "kind": "RepositoryPolicy",
+  "metadata": {
+    "name": "golden-baseline",
+    "revision": 1,
+    "description": "Freezes the observable behavior of the seven original check kinds."
+  },
+  "scope": {
+    "languages": [
+      "typescript",
+      "tsx"
+    ],
+    "include": [
+      "checks/**/*.ts"
+    ],
+    "exclude": []
+  },
+  "rules": [
+    {
+      "id": "import-edge",
+      "title": "Denied dependency",
+      "level": "error",
+      "check": {
+        "kind": "forbid-import-edge",
+        "from": [
+          "checks/imports/denied.ts"
+        ],
+        "deny": [
+          "module:blocked-package",
+          "path:checks/imports/target.ts"
+        ]
+      },
+      "remediation": "Use an allowed dependency."
+    },
+    {
+      "id": "required-import",
+      "title": "Required dependency",
+      "level": "error",
+      "check": {
+        "kind": "require-import",
+        "files": [
+          "checks/imports/required-*.ts"
+        ],
+        "module": "server-only",
+        "allowTypeOnly": false
+      },
+      "remediation": "Import the boundary marker."
+    },
+    {
+      "id": "restricted-call",
+      "title": "Restricted call",
+      "level": "warning",
+      "check": {
+        "kind": "restrict-call-site",
+        "callee": [
+          "db.query"
+        ],
+        "allowFrom": [
+          "allowed/**"
+        ],
+        "requireResolution": true
+      },
+      "remediation": "Move the call behind its boundary."
+    },
+    {
+      "id": "restricted-call-strict",
+      "title": "Restricted call, fail closed",
+      "level": "error",
+      "check": {
+        "kind": "restrict-call-site",
+        "callee": [
+          "db.query"
+        ],
+        "allowFrom": [
+          "checks/allowed/**"
+        ],
+        "requireResolution": true
+      },
+      "remediation": "Move the call behind its boundary."
+    },
+    {
+      "id": "export-keys",
+      "title": "Export shape",
+      "level": "error",
+      "check": {
+        "kind": "require-export-keys",
+        "files": [
+          "checks/exports/**"
+        ],
+        "exportName": "SETTINGS",
+        "requiredKeys": [
+          "present",
+          "missing"
+        ]
+      },
+      "remediation": "Declare all keys directly."
+    },
+    {
+      "id": "tenant-parameter",
+      "title": "Tenant context",
+      "level": "error",
+      "check": {
+        "kind": "require-tenant-parameter",
+        "files": [
+          "checks/tenant/**"
+        ],
+        "symbols": "*",
+        "parameter": "workspaceId"
+      },
+      "remediation": "Require a workspace identifier."
+    },
+    {
+      "id": "boundary-parse",
+      "title": "Parsed input",
+      "level": "error",
+      "check": {
+        "kind": "require-boundary-parse",
+        "files": [
+          "checks/boundary/**"
+        ],
+        "boundaryCalls": [
+          "persist"
+        ],
+        "parserCalls": [
+          "Input.parse",
+          "Input.safeParse"
+        ]
+      },
+      "remediation": "Parse untrusted input first."
+    },
+    {
+      "id": "governed-operation",
+      "title": "Governed action",
+      "level": "error",
+      "check": {
+        "kind": "require-governed-operation",
+        "files": [
+          "checks/governed/**",
+          "checks/governed-proof/**"
+        ],
+        "registryExport": "GOVERNED_ACTIONS",
+        "requiredKeys": [
+          "capability",
+          "tenantScope",
+          "quota",
+          "audit",
+          "idempotency"
+        ],
+        "declarationCalls": [
+          "defineGovernedAction"
+        ]
+      },
+      "remediation": "Register complete action metadata."
+    },
+    {
+      "id": "parse-claimed",
+      "title": "Claimed files must parse",
+      "level": "error",
+      "check": {
+        "kind": "require-import",
+        "files": [
+          "checks/parse/**"
+        ],
+        "module": "server-only",
+        "allowTypeOnly": false
+      },
+      "remediation": "Fix the syntax error so the file can be judged."
+    }
+  ]
+}
