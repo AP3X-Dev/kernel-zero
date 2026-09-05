@@ -13,7 +13,11 @@ export default defineConfig({
     environment: "node",
     include: ["tests/integration/**/*.test.ts"],
     globalSetup: ["./tests/integration/database/global-setup.ts"],
+    // A database that fails to start must fail the gate, never pass it with zero tests.
+    passWithNoTests: false,
     pool: "forks",
     sequence: { concurrent: false },
+    // Real PostgreSQL work under a loaded CI runner needs more than vitest's five-second default.
+    testTimeout: 60_000,
   },
 });
