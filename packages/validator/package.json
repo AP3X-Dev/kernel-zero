@@ -1,6 +1,6 @@
 {
   "name": "@kernel-zero/validator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Network-free deterministic architecture policy validator for KERNEL ZERO.",
   "license": "MIT",
   "type": "module",
@@ -27,15 +27,20 @@
     "access": "public"
   },
   "scripts": {
-    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node22 --external:typescript --outfile=dist/kernel-zero.js",
+    "build": "esbuild src/cli.ts ../../scripts/run-manifest-validator.ts ../../scripts/run-python-validator.ts ../../scripts/run-workflow-validator.ts --bundle --platform=node --format=esm --target=node22 --external:typescript --outdir=dist --entry-names=[name] && node ../../scripts/rename-validator-binaries.mjs",
     "prepack": "npm run build"
   },
   "bin": {
-    "kernel-zero": "dist/kernel-zero.js"
+    "kernel-zero": "dist/kernel-zero.js",
+    "kernel-zero-manifest": "dist/kernel-zero-manifest.js",
+    "kernel-zero-python": "dist/kernel-zero-python.js",
+    "kernel-zero-workflow": "dist/kernel-zero-workflow.js"
   },
   "files": [
     "dist",
+    "contracts",
     "LICENSE",
+    "python-analyzer.py",
     "README.md",
     "THIRD_PARTY_NOTICES.md"
   ],

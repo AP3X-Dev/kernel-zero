@@ -10,7 +10,7 @@ import { renderEvidence, renderPolicy } from "./render";
 export type ExplainCommand = Readonly<{ command: "explain"; artifact: string; kind: "policy" | "evidence" }>;
 export type InitCommand = Readonly<{ command: "init"; root: string; workspace: string }>;
 
-export const VALIDATOR_VERSION = "0.1.0";
+export const VALIDATOR_VERSION = "0.2.0";
 const PLACEHOLDER_WORKSPACE = "00000000-0000-7000-8000-000000000000";
 
 export class CommandError extends Error {
