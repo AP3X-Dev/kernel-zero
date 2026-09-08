@@ -1,16 +1,12 @@
-import { loadDashboardView } from "../../server/application/workspace-view";
-import { requireCapability } from "../../server/authorization/workspace";
+import { loadDashboardView } from "../../server/application/dashboard-view";
 import { PageHeading, Status } from "./ui-components";
-import { requireWorkspaceRoute } from "./route-context";
+import { workspaceRoute } from "./route-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function ApplicationHomePage() {
-  const { authority, context, runtime } = await requireWorkspaceRoute("workspace.read", "/app");
-  const dashboard = await loadDashboardView(runtime.prisma, context.workspace.id);
-  const quotaSummary = dashboard.quotas
-    .map((quota) => `${quota.key.replaceAll("_", " ")}: ${String(quota.used + quota.reserved)}/${quota.limit === null ? "unlimited" : String(quota.limit)}`)
-    .join(" · ");
+  const { runtime, workspaceId } = workspaceRoute();
+  const dashboard = await loadDashboardView(runtime.prisma, workspaceId);
   const nextAction = dashboard.activePolicy === null
     ? { href: "/app/policies", label: "Review policies", message: "Create, approve, and activate a policy before validating a repository." }
     : dashboard.latestEvidence === null
@@ -18,17 +14,12 @@ export default async function ApplicationHomePage() {
       : dashboard.latestEvidence.status !== "pass"
         ? { href: "/app/runs", label: "Review verification runs", message: "Review the latest non-passing run and decide the next governed action." }
         : dashboard.openExceptionDecisions > 0
-          ? { href: "/app/exceptions", label: "Review exceptions", message: "Resolve exception requests that are awaiting an independent decision." }
+          ? { href: "/app/exceptions", label: "Review exceptions", message: "Resolve exception requests that are awaiting a decision." }
           : { href: "/app/runs", label: "Review verification runs", message: "The latest run passed. Review its evidence and attestation details." };
-  const canOpenNextAction = nextAction.href === "/app/policies"
-    ? requireCapability(authority, "policy.read") === null
-    : nextAction.href === "/app/exceptions"
-      ? requireCapability(authority, "exception.read") === null
-      : requireCapability(authority, "evidence.read") === null;
   return (
     <main className="app-main" id="main-content">
-      <PageHeading description="A concise view of policy readiness, verification evidence, exceptions, and plan capacity.">
-        {context.workspace.name}
+      <PageHeading description="A concise view of policy readiness, verification evidence, and exceptions.">
+        Overview
       </PageHeading>
       <section aria-label="Workspace status" className="card-grid">
         <article className="card">
@@ -51,7 +42,7 @@ export default async function ApplicationHomePage() {
           <p className="metric-label">Open decisions</p>
           <p className="metric-value">{dashboard.openExceptionDecisions}</p>
           <Status tone={dashboard.openExceptionDecisions === 0 ? "positive" : "warning"}>
-            {dashboard.openExceptionDecisions === 0 ? "No decision backlog" : "Independent review required"}
+            {dashboard.openExceptionDecisions === 0 ? "No decision backlog" : "Decision required"}
           </Status>
         </article>
         <article className="card">
@@ -61,18 +52,11 @@ export default async function ApplicationHomePage() {
             {dashboard.expiringExceptions === 0 ? "None in the next seven days" : "Review before expiry"}
           </Status>
         </article>
-        <article className="card">
-          <p className="metric-label">Quota state</p>
-          <p className="metric-value">{dashboard.plan}</p>
-          <p className="muted">{quotaSummary}</p>
-        </article>
       </section>
       <section className="panel">
         <h2>Next action</h2>
         <p className="next-action">{nextAction.message}</p>
-        {canOpenNextAction ? <a className="button-link" href={nextAction.href}>{nextAction.label}</a> : (
-          <p className="muted">Ask a workspace member with the required capability to continue.</p>
-        )}
+        <a className="button-link" href={nextAction.href}>{nextAction.label}</a>
       </section>
     </main>
   );

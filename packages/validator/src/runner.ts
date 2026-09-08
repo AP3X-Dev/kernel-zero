@@ -4,17 +4,13 @@ import path from "node:path";
 
 import {
   ExceptionGrantSetSchema,
-  PolicyApprovalSchema,
-  WorkspaceTrustBundleSchema,
   canonicalEvidenceDigest,
   deriveEvidenceSummary,
   findingIdentity,
   sortFindings,
   verifyExceptionGrantSet,
-  verifyPolicyCustody,
   type ExceptionGrantSet,
   type EvidenceFinding,
-  type PolicyCustodyEvidence,
 } from "@kernel-zero/contracts";
 import { canonicalJson, canonicalSha256, generateUuidV7 } from "@kernel-zero/domain";
 import {
@@ -26,7 +22,7 @@ import {
   type RepositoryPolicy,
 } from "@kernel-zero/profile-software-architecture";
 
-import { CustodyRejectedError, type ResolvedValidateCommand, type ValidationOutcome } from "./cli";
+import type { ResolvedValidateCommand, ValidationOutcome } from "./cli";
 import { createManifestDigestInput, discoverTypeScriptSources } from "./discovery";
 import { createRepositoryProgram, evaluatePolicyChecks, type RawFindingMessageCode } from "./engine";
 
@@ -37,7 +33,7 @@ export type ValidatorRuntimeOptions = Readonly<{
   runId?: string;
 }>;
 
-export type ValidationRun = ValidationOutcome & Readonly<{ custody: PolicyCustodyEvidence | null; evidence: RepositoryEvidence; policy: RepositoryPolicy }>;
+export type ValidationRun = ValidationOutcome & Readonly<{ evidence: RepositoryEvidence; policy: RepositoryPolicy }>;
 
 const TOOL_VERSION = "0.1.0";
 
@@ -54,8 +50,6 @@ export async function runValidation(command: ResolvedValidateCommand, options: V
   const policyDigest = canonicalSha256(policy);
   const generatedAt = options.generatedAt ?? new Date();
   const exceptionBundle = await readVerifiedExceptionBundle(command, policyDigest, generatedAt);
-  // Custody is proven and written before any source is discovered; a validly failing custody proof stops here.
-  const custody = await proveCustody(command, { digest: policyDigest, kind: policy.kind, name: policy.metadata.name, revision: policy.metadata.revision });
   const discovery = await discoverTypeScriptSources({
     exclude: policy.scope.exclude,
     include: policy.scope.include,
@@ -113,23 +107,7 @@ export async function runValidation(command: ResolvedValidateCommand, options: V
   });
   await mkdir(path.dirname(command.out), { recursive: true });
   await writeFile(command.out, `${canonicalJson(evidence)}\n`, "utf8");
-  return Object.freeze({ custody, evidence, outcome: evidence.result.status === "pass" ? "pass" : evidence.result.status === "fail" ? "violations" : "error", policy });
-}
-
-async function proveCustody(
-  command: ResolvedValidateCommand,
-  policy: Readonly<{ digest: `sha256:${string}`; kind: string; name: string; revision: number }>,
-): Promise<PolicyCustodyEvidence | null> {
-  if (command.policyApproval === undefined || command.workspaceTrust === undefined || command.custodyOut === undefined) return null;
-  const approval = PolicyApprovalSchema.safeParse(await readJson(command.policyApproval, "Policy approval"));
-  if (!approval.success) throw new ValidatorRunError("Policy approval does not satisfy the custody contract.", { cause: approval.error });
-  const trust = WorkspaceTrustBundleSchema.safeParse(await readJson(command.workspaceTrust, "Workspace trust bundle"));
-  if (!trust.success) throw new ValidatorRunError("Workspace trust bundle does not satisfy the custody contract.", { cause: trust.error });
-  const custody = verifyPolicyCustody({ approval: approval.data, policy, toolVersion: TOOL_VERSION, trust: trust.data, workspace: command.workspace });
-  await mkdir(path.dirname(command.custodyOut), { recursive: true });
-  await writeFile(command.custodyOut, `${canonicalJson(custody)}\n`, "utf8");
-  if (custody.result.status === "fail") throw new CustodyRejectedError(custody);
-  return custody;
+  return Object.freeze({ evidence, outcome: evidence.result.status === "pass" ? "pass" : evidence.result.status === "fail" ? "violations" : "error", policy });
 }
 
 type StrictEd25519Jwk = Readonly<{ crv: "Ed25519"; kid: string; kty: "OKP"; x: string }>;

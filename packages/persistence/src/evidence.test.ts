@@ -16,7 +16,6 @@ import {
 } from "./evidence";
 
 const WORKSPACE = "0195f000-0000-7000-8000-000000000002";
-const SUBMITTER = "0195f000-0000-7000-8000-000000000003";
 const CORRELATION = "0195f000-0000-7000-8000-000000000001";
 const RUN_ID = "0195f000-0000-7000-8000-000000000004";
 const digest = (digit: string) => `sha256:${digit.repeat(64)}` as const;
@@ -82,7 +81,6 @@ describe("evidence persistence", () => {
       attestationState: "recorded",
       correlationId: CORRELATION,
       document: evidence(),
-      submitterId: SUBMITTER,
       workspaceId: WORKSPACE,
     });
 
@@ -110,14 +108,14 @@ describe("evidence persistence", () => {
       evidenceRun: { findUnique: vi.fn().mockResolvedValue({ integrityDigest: evidence().integrity.digest }) },
     };
     await expect(storeEvidenceRun(client(sameTx), {
-      attestationState: "recorded", correlationId: CORRELATION, document: evidence(), submitterId: SUBMITTER, workspaceId: WORKSPACE,
+      attestationState: "recorded", correlationId: CORRELATION, document: evidence(), workspaceId: WORKSPACE,
     })).resolves.toEqual({ created: false, integrityDigest: evidence().integrity.digest, runId: RUN_ID });
 
     const conflictTx = {
       evidenceRun: { findUnique: vi.fn().mockResolvedValue({ integrityDigest: digest("9") }) },
     };
     await expect(storeEvidenceRun(client(conflictTx), {
-      attestationState: "recorded", correlationId: CORRELATION, document: evidence(), submitterId: SUBMITTER, workspaceId: WORKSPACE,
+      attestationState: "recorded", correlationId: CORRELATION, document: evidence(), workspaceId: WORKSPACE,
     })).rejects.toThrow("CONFLICT:run_digest");
   });
 
@@ -128,7 +126,7 @@ describe("evidence persistence", () => {
     };
     const findUnique = vi.fn().mockResolvedValue({ integrityDigest: evidence().integrity.digest });
     const result = await storeEvidenceRun(client(tx, findUnique), {
-      attestationState: "recorded", correlationId: CORRELATION, document: evidence(), submitterId: SUBMITTER, workspaceId: WORKSPACE,
+      attestationState: "recorded", correlationId: CORRELATION, document: evidence(), workspaceId: WORKSPACE,
     });
     expect(result.created).toBe(false);
     expect(findUnique).toHaveBeenCalledWith({ where: { workspaceId_runId: { runId: RUN_ID, workspaceId: WORKSPACE } } });
@@ -140,17 +138,17 @@ describe("evidence persistence", () => {
       errorCount: 1, exceptedCount: 0, filesScanned: 4, generatedAt: new Date("2026-08-31T12:00:00.000Z"),
       id: "0195f000-0000-7000-8000-000000000010", integrityDigest: digest("3"), manifestDigest: digest("2"),
       policyDigest: digest("1"), repositoryLabel: "example/service", revisionLabel: "git:abc123", runId: RUN_ID,
-      signatureKeyId: null, status: "fail", submitterId: SUBMITTER, toolVersion: "1.0.0", warningCount: 0,
+      signatureKeyId: null, status: "fail", toolVersion: "1.0.0", warningCount: 0,
     };
     const findMany = vi.fn().mockResolvedValue([row]);
     const page = await listEvidenceRuns({ evidenceRun: { findMany } } as never, {
       attestationState: "recorded", limit: 25, policyDigest: digest("1"), repositoryLabel: "example/service",
-      status: "fail", submitterId: SUBMITTER, workspaceId: WORKSPACE,
+      status: "fail", workspaceId: WORKSPACE,
     });
 
     expect(findMany.mock.calls[0]?.[0].where).toMatchObject({
       attestationState: "recorded", policyDigest: digest("1"), repositoryLabel: "example/service",
-      status: "fail", submitterId: SUBMITTER, workspaceId: WORKSPACE,
+      status: "fail", workspaceId: WORKSPACE,
     });
     expect(page.items[0]).not.toHaveProperty("id");
     expect(page.items[0]).not.toHaveProperty("signatureValue");
@@ -193,7 +191,7 @@ describe("evidence persistence", () => {
       finding: { count: vi.fn().mockResolvedValue(7) },
     };
     const result = await deleteExpiredEvidence(client(tx), {
-      batchSize: 100, correlationId: CORRELATION, plan: "Open", workspaceId: WORKSPACE,
+      batchSize: 100, correlationId: CORRELATION, retentionDays: 30, workspaceId: WORKSPACE,
     }, new Date("2026-08-31T00:00:00.000Z"));
 
     expect(tx.evidenceRun.findMany).toHaveBeenCalledWith(expect.objectContaining({

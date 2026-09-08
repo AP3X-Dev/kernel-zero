@@ -14,13 +14,12 @@ const WORKSPACE = "0195f000-0000-7000-8000-000000000002";
 describe("explain", () => {
   it("parses exactly one artifact option", () => {
     expect(parseExplainArguments(["--policy", "p.json"])).toEqual({ command: "explain", artifact: "p.json", kind: "policy" });
-    expect(parseExplainArguments(["--custody", "c.json"])).toEqual({ command: "explain", artifact: "c.json", kind: "custody" });
     expect(() => parseExplainArguments([])).toThrowError(CommandError);
     expect(() => parseExplainArguments(["--policy", "p.json", "--evidence", "e.json"])).toThrowError("exactly one");
     expect(() => parseExplainArguments(["--root", "."])).toThrowError("Unknown option --root");
   });
 
-  it("renders the canonical policy, evidence, and custody examples deterministically", async () => {
+  it("renders the canonical policy and evidence examples deterministically", async () => {
     expect(await explain({ command: "explain", artifact: path.join(EXAMPLES, "repository-policy-v1.json"), kind: "policy" })).toBe([
       "policy service-boundaries revision 1: 1 rules",
       "error layers-no-ui-db (forbid-import-edge): UI cannot import persistence",
@@ -30,12 +29,6 @@ describe("explain", () => {
     expect(await explain({ command: "explain", artifact: path.join(EXAMPLES, "repository-evidence-v1.json"), kind: "evidence" })).toBe([
       "kernel-zero: fail (1 errors, 0 warnings, 0 excepted, 42 files)",
       "error layers-no-ui-db apps/control/ui/page.tsx:8:1 DENIED_IMPORT @prisma/client",
-      "",
-    ].join("\n"));
-    expect(await explain({ command: "explain", artifact: path.join(EXAMPLES, "policy-custody-evidence-v1.json"), kind: "custody" })).toBe([
-      "custody: fail (1 findings) policy service-boundaries revision 1 approval 0195f000-0000-7000-8000-000000000012 key workspace-authority-1",
-      "error CUSTODY_AUTHORITY_TIME_INVALID authority:workspace-authority-1",
-      "  The approval signing authority was not authorized at the signed approval time.",
       "",
     ].join("\n"));
     const twice = await explain({ command: "explain", artifact: path.join(EXAMPLES, "repository-evidence-v1.json"), kind: "evidence" });
@@ -51,7 +44,6 @@ describe("explain", () => {
     await writeFile(unknownKind, JSON.stringify({ apiVersion: "kernel-zero.dev/v1", kind: "ManifestPolicy", metadata: { name: "manifest-hygiene", revision: 1, description: "x" }, rules: [{ check: { kind: "allowed-licenses", allowed: ["MIT"] }, id: "allowed-license", level: "error", remediation: "x", title: "x" }] }), "utf8");
     await expect(explain({ command: "explain", artifact: unknownKind, kind: "policy" })).rejects.toThrow(/RepositoryPolicy only/u);
     await expect(explain({ command: "explain", artifact: path.join(EXAMPLES, "repository-policy-v1.json"), kind: "evidence" })).rejects.toThrow(/evidence contract/u);
-    await expect(explain({ command: "explain", artifact: path.join(EXAMPLES, "repository-evidence-v1.json"), kind: "custody" })).rejects.toThrow(/custody evidence contract/u);
     const unknownCode = JSON.parse(await readFile(path.join(EXAMPLES, "repository-evidence-v1.json"), "utf8")) as { findings: { messageCode: string }[] };
     unknownCode.findings[0] = { ...unknownCode.findings[0], messageCode: "TOTALLY_MADE_UP" };
     const badCode = path.join(root, "bad-code.json");

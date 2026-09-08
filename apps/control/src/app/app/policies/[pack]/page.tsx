@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { loadPolicyDetailView } from "../../../../server/application/governance-view";
 import { PageHeading, Status } from "../../ui-components";
-import { requireWorkspaceRoute } from "../../route-context";
+import { workspaceRoute } from "../../route-context";
 
 type PolicyPageProps = Readonly<{ params: Promise<Readonly<{ pack: string }>> }>;
 
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 
 export default async function PolicyPage({ params }: PolicyPageProps) {
   const { pack } = await params;
-  const { context, runtime } = await requireWorkspaceRoute("policy.read", `/app/policies/${pack}`);
-  const policy = await loadPolicyDetailView(runtime.prisma, context.workspace.id, pack);
+  const { runtime, workspaceId } = workspaceRoute();
+  const policy = await loadPolicyDetailView(runtime.prisma, workspaceId, pack);
   if (policy === null) notFound();
   return (
     <main className="app-main" id="main-content">

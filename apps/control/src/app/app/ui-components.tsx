@@ -23,7 +23,3 @@ export function Status({ children, tone = "neutral" }: Readonly<{
 export function EmptyState({ children, title }: Readonly<{ children: ReactNode; title: string }>) {
   return <section className="empty-state"><h2>{title}</h2><p>{children}</p></section>;
 }
-
-export function LiveMutationStatus({ message }: Readonly<{ message: string }>) {
-  return <p aria-atomic="true" aria-live="polite" className="live-status" role="status">{message}</p>;
-}

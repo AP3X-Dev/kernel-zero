@@ -296,7 +296,7 @@
                   "$ref": "#/$defs/__schema6"
                 },
                 "requiredKeys": {
-                  "minItems": 5,
+                  "minItems": 1,
                   "maxItems": 5,
                   "type": "array",
                   "items": {

@@ -12,13 +12,10 @@
     "@kernel-zero/domain": "*",
     "@kernel-zero/persistence": "*",
     "@kernel-zero/profiles": "*",
-    "better-auth": "1.6.30",
     "next": "^16.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "resend": "^6.0.0",
     "server-only": "^0.0.1",
-    "stripe": "^18.5.0",
     "zod": "^4.1.0"
   }
 }

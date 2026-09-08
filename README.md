@@ -16,13 +16,13 @@ deterministic checker enforces on every commit, with a tamper-evident record of
 what it found.
 
 Its first profile governs software architecture through versioned policy,
-deterministic repository validation, maker-checker decisions, controlled
-exceptions, and tamper-evident verification records.
+deterministic repository validation, approved revisions, controlled exceptions,
+and tamper-evident verification records.
 
-The repository is a single TypeScript monorepo. Shared identity, tenancy,
-authorization, policy, exception, audit, and evidence primitives live beside the
-control application and deterministic validator. Additional profiles reuse those
-primitives without creating separate products or control planes.
+The repository is a single TypeScript monorepo. Shared policy, exception,
+audit, and evidence primitives live beside the single-operator control console
+and the deterministic validator. Additional profiles reuse those primitives
+without creating separate products or control planes.
 
 ## How it works
 
@@ -31,9 +31,11 @@ primitives without creating separate products or control planes.
 2. **The validator** is a network-free CLI over the TypeScript compiler API. It
    reads the policy and the repository and writes **evidence**: normalized
    findings, never source. Exit 0 passes, 1 has findings, 2 could not complete.
-3. **The control plane** stores policies and their revisions, requires a second
-   approver, ingests evidence runs, and grants exceptions that expire. Every
-   record is fingerprinted, so an altered one stops verifying.
+3. **The control plane** stores policies and their revisions, ingests evidence
+   runs over a token-protected API, and grants exceptions that expire. Every
+   record is fingerprinted, so an altered one stops verifying. It is a local
+   single-operator console: there is no sign-in, and one configured workspace
+   identifier scopes every stored row.
 4. **The gate** is CI. A local hook gives fast feedback; the protected branch
    check is what actually blocks a merge.
 
@@ -49,9 +51,10 @@ npx prisma migrate deploy --schema packages/persistence/prisma/schema.prisma
 npm run dev
 ```
 
-Copy `.env.example` to `.env` and replace every local-only value before using a
-shared environment. The application is served at `http://127.0.0.1:3000` by
-default.
+Copy `.env.example` to `.env` and replace the evidence token before exposing
+the API beyond your machine. The application is served at
+`http://127.0.0.1:3000` by default. CI submits evidence with
+`Authorization: Bearer $KERNEL_ZERO_EVIDENCE_TOKEN` to `POST /api/evidence/v1/runs`.
 
 ## Deterministic enforcement
 
@@ -76,11 +79,11 @@ npm install --save-dev @kernel-zero/validator
 
 Then add a `validator:self` script, copy `.githooks/pre-commit`, and copy the CI
 workflow, or run `kernel-zero init` to scaffold them. `docs/validator-and-hooks.md`
-carries the exact commands and the custody items a human owns: making the check
-required, protecting the workflow, policy, validator, and trust bundle from the
-contributors being judged, and rotating authority keys. Maintainers
-can run `npm run validator:package:check` to build, pack, install, and exercise
-the exact consumer artifact before a release.
+carries the exact commands and the two items a human owns: making the check
+required, and protecting the workflow, policy, and validator from the
+contributors being judged. Maintainers can run `npm run validator:package:check`
+to build, pack, install, and exercise the exact consumer artifact before a
+release.
 
 ## Profiles
 

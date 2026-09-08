@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { PolicyService, policyRevisionActions } from "./policy-service";
-
-const actor = (capabilities: string[], userId = "author") => ({
-  capabilityDocument: { capabilities }, isOwner: false, userId,
-});
+import { PolicyService } from "./policy-service";
 
 const policyDocument = {
   apiVersion: "kernel-zero.dev/v1",
@@ -23,38 +19,19 @@ const policyDocument = {
 const command = { correlationId: "correlation", workspaceId: "workspace" };
 
 describe("policy application service", () => {
-  it("requires the closed capability at each command boundary", async () => {
-    const approve = vi.fn();
-    const service = new PolicyService({} as never, { approve } as never);
-    await expect(service.approve({ actor: actor(["policy.read"]), correlationId: "correlation", revisionId: "revision", workspaceId: "workspace" })).rejects.toThrow("FORBIDDEN");
-    expect(approve).not.toHaveBeenCalled();
-  });
-
-  it("authorizes approval and keeps the maker-checker predicate in persistence", async () => {
+  it("hands approval to persistence with the workspace scope", async () => {
     const approve = vi.fn().mockResolvedValue({ digest: "sha256:digest" });
     const service = new PolicyService({} as never, { approve } as never);
-    await expect(service.approve({ actor: actor(["policy.approve"], "checker"), correlationId: "correlation", revisionId: "revision", workspaceId: "workspace" })).resolves.toEqual({ digest: "sha256:digest" });
-    expect(approve).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ actorUserId: "checker" }));
-  });
-
-  it("gates approval with custody behind the approve capability and hands the signer through untouched", async () => {
-    const approveWithCustody = vi.fn().mockResolvedValue({ approval: { approvalId: "a" }, created: true });
-    const service = new PolicyService({} as never, { approveWithCustody } as never);
-    const signer = { keyId: "authority-1", sign: vi.fn() };
-    await expect(service.approveWithCustody({ actor: actor(["policy.read"]), correlationId: "correlation", keyId: "authority-1", revisionId: "revision", signer, workspaceId: "workspace" })).rejects.toThrow("FORBIDDEN");
-    expect(approveWithCustody).not.toHaveBeenCalled();
-    await expect(service.approveWithCustody({ actor: actor(["policy.approve"], "checker"), correlationId: "correlation", keyId: "authority-1", revisionId: "revision", signer, workspaceId: "workspace" })).resolves.toEqual({ approval: { approvalId: "a" }, created: true });
-    expect(approveWithCustody).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ actorUserId: "checker", keyId: "authority-1", signer }));
+    await expect(service.approve({ correlationId: "correlation", revisionId: "revision", workspaceId: "workspace" })).resolves.toEqual({ digest: "sha256:digest" });
+    expect(approve).toHaveBeenCalledWith(expect.anything(), { correlationId: "correlation", revisionId: "revision", workspaceId: "workspace" });
   });
 
   it("refuses to persist a document no registered profile accepts", async () => {
     const create = vi.fn();
     const save = vi.fn();
     const service = new PolicyService({} as never, { create, save } as never);
-    const writer = actor(["policy.write"]);
-
-    await expect(service.create({ ...command, actor: writer, description: "d", displayName: "Policy", document: { ...policyDocument, kind: "MysteryPolicy" }, slug: "service-boundaries" })).rejects.toThrow("POLICY_INVALID");
-    await expect(service.save({ ...command, actor: writer, document: { ...policyDocument, rules: [] }, packId: "pack" })).rejects.toThrow("POLICY_INVALID");
+    await expect(service.create({ ...command, description: "d", displayName: "Policy", document: { ...policyDocument, kind: "MysteryPolicy" }, slug: "service-boundaries" })).rejects.toThrow("POLICY_INVALID");
+    await expect(service.save({ ...command, document: { ...policyDocument, rules: [] }, packId: "pack" })).rejects.toThrow("POLICY_INVALID");
     expect(create).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
   });
@@ -62,7 +39,7 @@ describe("policy application service", () => {
   it("passes only the profile-parsed document to persistence", async () => {
     const create = vi.fn().mockResolvedValue({ packId: "pack", revisionId: "revision" });
     const service = new PolicyService({} as never, { create } as never);
-    await service.create({ ...command, actor: actor(["policy.write"]), description: "d", displayName: "Policy", document: policyDocument, slug: "service-boundaries" });
+    await service.create({ ...command, description: "d", displayName: "Policy", document: policyDocument, slug: "service-boundaries" });
     expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ document: policyDocument }));
   });
 
@@ -89,10 +66,5 @@ describe("policy application service", () => {
       }],
     };
     expect(() => service.diff(policyDocument, manifestDocument)).toThrow("POLICY_PROFILE_MISMATCH");
-  });
-
-  it("never advertises approval to the revision author", () => {
-    expect(policyRevisionActions(actor(["policy.approve"], "author"), "author")).toEqual({ canApprove: false });
-    expect(policyRevisionActions(actor(["policy.approve"], "checker"), "author")).toEqual({ canApprove: true });
   });
 });

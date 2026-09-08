@@ -1,13 +1,13 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { EvidenceEnvelopeSchema, PolicyCustodyEvidenceSchema, PolicyEnvelopeSchema } from "@kernel-zero/contracts";
+import { EvidenceEnvelopeSchema, PolicyEnvelopeSchema } from "@kernel-zero/contracts";
 import { isUuidV7 } from "@kernel-zero/domain";
 import { RepositoryEvidenceSchema, RepositoryPolicySchema } from "@kernel-zero/profile-software-architecture";
 
-import { renderCustody, renderEvidence, renderPolicy } from "./render";
+import { renderEvidence, renderPolicy } from "./render";
 
-export type ExplainCommand = Readonly<{ command: "explain"; artifact: string; kind: "policy" | "evidence" | "custody" }>;
+export type ExplainCommand = Readonly<{ command: "explain"; artifact: string; kind: "policy" | "evidence" }>;
 export type InitCommand = Readonly<{ command: "init"; root: string; workspace: string }>;
 
 export const VALIDATOR_VERSION = "0.1.0";
@@ -37,11 +37,11 @@ function optionValues(argv: readonly string[], allowed: ReadonlySet<string>): Ma
 }
 
 export function parseExplainArguments(argv: readonly string[]): ExplainCommand {
-  const values = optionValues(argv, new Set(["--policy", "--evidence", "--custody"]));
-  if (values.size !== 1) throw new CommandError("explain takes exactly one of --policy, --evidence, or --custody");
+  const values = optionValues(argv, new Set(["--policy", "--evidence"]));
+  if (values.size !== 1) throw new CommandError("explain takes exactly one of --policy or --evidence");
   const [option, artifact] = [...values.entries()][0] ?? [];
-  if (option === undefined || artifact === undefined) throw new CommandError("explain takes exactly one of --policy, --evidence, or --custody");
-  return { command: "explain", artifact, kind: option === "--policy" ? "policy" : option === "--evidence" ? "evidence" : "custody" };
+  if (option === undefined || artifact === undefined) throw new CommandError("explain takes exactly one of --policy or --evidence");
+  return { command: "explain", artifact, kind: option === "--policy" ? "policy" : "evidence" };
 }
 
 export function parseInitArguments(argv: readonly string[]): InitCommand {
@@ -79,11 +79,6 @@ export async function explain(command: ExplainCommand): Promise<string> {
       const evidence = RepositoryEvidenceSchema.safeParse(value);
       if (!evidence.success) throw new CommandError("Artifact does not satisfy the RepositoryEvidence contract.");
       return renderEvidence(evidence.data, new Map());
-    }
-    case "custody": {
-      const custody = PolicyCustodyEvidenceSchema.safeParse(value);
-      if (!custody.success) throw new CommandError("Artifact does not satisfy the custody evidence contract.");
-      return renderCustody(custody.data);
     }
   }
 }

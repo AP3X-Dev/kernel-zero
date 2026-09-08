@@ -9,19 +9,13 @@ type RequirementGroup = Readonly<{
 }>;
 
 const groups: readonly RequirementGroup[] = [
-  { count: 6, evidence: "config, auth, callback, identity-error, outbox, and redaction tests", prefix: "FR-AUTH", qualification: "local unit/configuration proof; live OAuth/email and database session proof pending" },
-  { count: 6, evidence: "tenancy persistence tests, migration constraints, authorization tests, and architecture self-policy", prefix: "FR-TEN", qualification: "local unit/schema proof; isolated PostgreSQL concurrency proof pending" },
-  { count: 9, evidence: "invitation persistence, roster view, authorization, quota, and team service tests", prefix: "FR-TEAM", qualification: "local unit/schema proof; live delivery and database concurrency proof pending" },
-  { count: 8, evidence: "policy contract, persistence, service, governed-action, diff, UI read-model, self-policy, and gate 4/5 PostgreSQL maker-checker and custody-approval tests", prefix: "FR-POL", qualification: "local unit/static and isolated PostgreSQL proof" },
-  { count: 11, evidence: "validator CLI, discovery, engine, runner, golden baseline, semantic check-kind matrices, custody-flow, public artifact, self-policy, and benchmark checks", prefix: "FR-VAL", qualification: "local executable proof" },
-  { count: 8, evidence: "custody contract and property tests, custody-flow CLI exit/output-order tests, policy-custody persistence tests, gate 5 PostgreSQL custody tests, custody-signer tests, and the two custody self-policy rules", prefix: "FR-CUS", qualification: "local unit/cryptographic and isolated PostgreSQL proof with ephemeral keys only; production authority keys, trust import, and live enforcement intentionally unavailable" },
-  { count: 8, evidence: "evidence transport, service, compatibility, persistence adapter, persistence, route, and UI read-model tests", prefix: "FR-EVD", qualification: "local unit/contract proof; live PostgreSQL retention and ingestion proof pending" },
-  { count: 6, evidence: "exception contract, persistence, signing-key, service, validator-consumption, and reserved-export tests", prefix: "FR-EXC", qualification: "local unit/cryptographic proof; production export custody intentionally unavailable" },
-  { count: 6, evidence: "entitlement, quota, transaction, governed-action, invitation, policy, and billing preflight tests", prefix: "FR-ENT", qualification: "local unit/schema proof; isolated PostgreSQL concurrency proof pending" },
-  { count: 10, evidence: "billing service/cache, Stripe adapter, signed webhook route, receipt/projection persistence, and operator-view tests", prefix: "FR-BILL", qualification: "mocked-provider proof; no live Stripe qualification" },
-  { count: 6, evidence: "audit, governed-action rollback, correlation proxy, request logging, redaction, and safe read-model tests", prefix: "FR-AUD", qualification: "local unit/schema proof; full hosted request tracing pending" },
-  { count: 4, evidence: "rate-limit policy/configuration and failure-mode tests", prefix: "FR-RATE", qualification: "local mocked-adapter proof; no live Redis qualification" },
-  { count: 9, evidence: "route/UI contracts, capability-gated read models, production build, and desktop/320px Playwright axe checks", prefix: "FR-UI", qualification: "local build/browser proof; authenticated database-backed keyboard journeys pending" },
+  // Withdrawn on 2026-09-08 with the SaaS shell (ADR 2026-09-08-single-operator-kernel): FR-AUTH, FR-TEN, FR-TEAM, FR-CUS, FR-ENT, FR-BILL, FR-RATE.
+  { count: 8, evidence: "policy contract, persistence, service, governed-action, diff, UI read-model, self-policy, and gate 3/4 PostgreSQL approval-race and single-active-revision tests", prefix: "FR-POL", qualification: "local unit/static and isolated PostgreSQL proof; maker-checker separation withdrawn with identity" },
+  { count: 11, evidence: "validator CLI, discovery, engine, runner, golden baseline, semantic check-kind matrices, public artifact, self-policy, and benchmark checks", prefix: "FR-VAL", qualification: "local executable proof" },
+  { count: 8, evidence: "evidence transport, bearer-token request context, service, compatibility, persistence adapter, persistence, route, and UI read-model tests", prefix: "FR-EVD", qualification: "local unit/contract proof; live PostgreSQL retention and ingestion proof pending" },
+  { count: 6, evidence: "exception contract, persistence, signing-key, validator-consumption, gate 4 decision-race, and reserved-export tests", prefix: "FR-EXC", qualification: "local unit/cryptographic proof; production export custody intentionally unavailable" },
+  { count: 6, evidence: "audit, governed-action rollback, gate 3 transaction rollback, correlation proxy, request logging, redaction, and safe read-model tests", prefix: "FR-AUD", qualification: "local unit/schema proof; full hosted request tracing pending" },
+  { count: 9, evidence: "route/UI contracts, read models, production build, and desktop/320px Playwright axe checks over every page", prefix: "FR-UI", qualification: "local build/browser proof" },
 ];
 
 const rows = groups.flatMap((group) => Array.from({ length: group.count }, (_, index) => {

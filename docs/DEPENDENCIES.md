@@ -14,7 +14,6 @@ and each installed package's license files.
 | `@types/node` | 22.20.1 | MIT |
 | `@types/react` | 19.2.18 | MIT |
 | `@types/react-dom` | 19.2.5 | MIT |
-| `better-auth` | 1.6.30 | MIT |
 | `embedded-postgres` | 17.10.0-beta.17 | MIT |
 | `esbuild` | 0.28.2 | MIT |
 | `eslint` | 9.39.5 | MIT |
@@ -25,9 +24,7 @@ and each installed package's license files.
 | `prisma` | 6.19.3 | Apache-2.0 |
 | `react` | 19.2.8 | MIT |
 | `react-dom` | 19.2.8 | MIT |
-| `resend` | 6.25.0 | MIT |
 | `server-only` | 0.0.1 | MIT |
-| `stripe` | 18.5.0 | MIT |
 | `typescript` | 5.9.3 | Apache-2.0 |
 | `typescript-eslint` | 8.68.0 | MIT |
 | `vitest` | 3.2.7 | MIT |

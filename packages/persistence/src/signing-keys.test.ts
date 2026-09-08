@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import { exportExceptionGrantSet, registerSigningKey, revokeSigningKey } from "./signing-keys";
 
 const WORKSPACE = "0195f000-0000-7000-8000-000000000002";
-const ACTOR = "0195f000-0000-7000-8000-000000000003";
 const CORRELATION = "0195f000-0000-7000-8000-000000000001";
 const DIGEST = `sha256:${"1".repeat(64)}`;
 function client(tx: object) { return { $transaction: vi.fn(async (operation) => operation(tx)) } as never; }
@@ -15,8 +14,8 @@ describe("workspace Ed25519 signing keys and exception export", () => {
     const { privateKey, publicKey } = generateKeyPairSync("ed25519");
     const create = vi.fn<(input: { data: { publicKey: string } }) => Promise<{ keyId: string }>>().mockResolvedValue({ keyId: "key-1" });
     const tx = { auditRecord: { create: vi.fn() }, signingKey: { create } };
-    await expect(registerSigningKey(client(tx), { actorUserId: ACTOR, correlationId: CORRELATION, keyId: "key-1", label: "Local validation", publicKey: privateKey.export({ format: "pem", type: "pkcs8" }).toString(), workspaceId: WORKSPACE })).rejects.toThrow("publicKey");
-    await registerSigningKey(client(tx), { actorUserId: ACTOR, correlationId: CORRELATION, keyId: "key-1", label: "Local validation", publicKey: publicKey.export({ format: "pem", type: "spki" }).toString(), workspaceId: WORKSPACE });
+    await expect(registerSigningKey(client(tx), { correlationId: CORRELATION, keyId: "key-1", label: "Local validation", publicKey: privateKey.export({ format: "pem", type: "pkcs8" }).toString(), workspaceId: WORKSPACE })).rejects.toThrow("publicKey");
+    await registerSigningKey(client(tx), { correlationId: CORRELATION, keyId: "key-1", label: "Local validation", publicKey: publicKey.export({ format: "pem", type: "spki" }).toString(), workspaceId: WORKSPACE });
     const stored = create.mock.calls[0]?.[0].data.publicKey;
     expect(stored).toContain("BEGIN PUBLIC KEY");
     expect(stored).not.toContain("PRIVATE");
@@ -24,7 +23,7 @@ describe("workspace Ed25519 signing keys and exception export", () => {
 
   it("revokes idempotently and audits only the state change", async () => {
     const tx = { auditRecord: { create: vi.fn() }, signingKey: { updateMany: vi.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 }) } };
-    const input = { actorUserId: ACTOR, correlationId: CORRELATION, keyId: "key-1", workspaceId: WORKSPACE };
+    const input = { correlationId: CORRELATION, keyId: "key-1", workspaceId: WORKSPACE };
     await expect(revokeSigningKey(client(tx), input)).resolves.toEqual({ revoked: true });
     await expect(revokeSigningKey(client(tx), input)).resolves.toEqual({ revoked: false });
     expect(tx.auditRecord.create).toHaveBeenCalledTimes(1);

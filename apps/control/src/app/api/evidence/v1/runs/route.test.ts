@@ -4,7 +4,6 @@ import { createEvidencePostHandler, type EvidenceRouteDependencies } from "./rou
 
 const mediaType = "application/vnd.kernel-zero.evidence+json;version=1";
 const context = {
-  actor: { capabilityDocument: { capabilities: ["evidence.submit"] }, isOwner: false as const, userId: "user-1" },
   correlationId: "0195f000-0000-7000-8000-000000000004",
   workspaceId: "0195f000-0000-7000-8000-000000000002",
 };
@@ -25,7 +24,7 @@ function dependencies(kind: "created" | "duplicate" = "created"): EvidenceRouteD
 }
 
 describe("POST /api/evidence/v1/runs", () => {
-  it("requires an authenticated workspace submission context", async () => {
+  it("requires the evidence bearer token", async () => {
     const response = await createEvidencePostHandler({ ...dependencies(), resolveSubmission: () => Promise.resolve(null) })(request());
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({ error: { code: "UNAUTHENTICATED" } });

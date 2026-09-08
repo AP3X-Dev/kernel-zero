@@ -4,16 +4,12 @@ import type { PolicyEnvelope } from "@kernel-zero/contracts";
 import {
   listEvidenceFindings,
   listEvidenceRuns,
-  listPolicyAuthorityKeys,
-  readWorkspaceTrustBundle,
   SAFE_AUDIT_SELECT,
   type EvidenceFindingReview,
   type EvidenceRunReview,
   type PersistenceClient,
-  type PolicyAuthorityKeySummary,
   type SafeAuditRecord,
 } from "@kernel-zero/persistence";
-import type { WorkspaceTrustBundle } from "@kernel-zero/contracts";
 import { parsePolicyDocument } from "@kernel-zero/profiles";
 
 export type PolicyListItem = Readonly<{
@@ -60,27 +56,6 @@ export type ExceptionListItem = Readonly<{
   revokedAt: Date | null;
   ruleId: string;
   validUntil: Date;
-}>;
-
-export type SubscriptionView = Readonly<{
-  cancelAtPeriodEnd: boolean;
-  currentPeriodEnd: Date | null;
-  entitlementState: string;
-  graceExpiresAt: Date | null;
-  plan: string;
-  providerStatus: string;
-}>;
-
-export type PaymentEventListItem = Readonly<{
-  createdAt: Date;
-  eventId: string;
-  eventType: string;
-  projectionResult: string | null;
-  provider: string;
-  providerCreatedAt: Date;
-  quarantineReason: string | null;
-  retryCount: number;
-  state: string;
 }>;
 
 export async function loadPoliciesView(client: PersistenceClient, workspaceId: string): Promise<readonly PolicyListItem[]> {
@@ -179,7 +154,6 @@ export async function loadRunDetailView(
       runId: true,
       signatureKeyId: true,
       status: true,
-      submitterId: true,
       toolVersion: true,
       warningCount: true,
     },
@@ -215,32 +189,6 @@ export async function loadExceptionsView(client: PersistenceClient, workspaceId:
   return Object.freeze(rows.map((row) => Object.freeze(row)));
 }
 
-export async function loadSubscriptionView(client: PersistenceClient, workspaceId: string): Promise<SubscriptionView | null> {
-  const row = await client.subscriptionProjection.findUnique({
-    select: {
-      cancelAtPeriodEnd: true,
-      currentPeriodEnd: true,
-      entitlementState: true,
-      graceExpiresAt: true,
-      plan: true,
-      providerStatus: true,
-    },
-    where: { workspaceId },
-  });
-  return row === null ? null : Object.freeze(row);
-}
-
-export type PolicyCustodyView = Readonly<{
-  bundle: WorkspaceTrustBundle | null;
-  keys: readonly PolicyAuthorityKeySummary[];
-}>;
-
-/** Public key material and timelines only; the bundle is exactly what CI hands the validator. */
-export async function loadPolicyCustodyView(client: PersistenceClient, workspaceId: string): Promise<PolicyCustodyView> {
-  const [keys, bundle] = await Promise.all([listPolicyAuthorityKeys(client, workspaceId), readWorkspaceTrustBundle(client, workspaceId)]);
-  return Object.freeze({ bundle, keys });
-}
-
 export async function loadAuditView(
   client: PersistenceClient,
   workspaceId: string,
@@ -260,29 +208,6 @@ export async function loadAuditView(
       ] }),
     },
   });
-}
-
-export async function loadPaymentEventsView(
-  client: PersistenceClient,
-  state?: "applied" | "ignored" | "quarantined" | "received" | "stale",
-): Promise<readonly PaymentEventListItem[]> {
-  const rows = await client.paymentEventReceipt.findMany({
-    orderBy: [{ providerCreatedAt: "desc" }, { id: "desc" }],
-    select: {
-      createdAt: true,
-      eventId: true,
-      eventType: true,
-      projectionResult: true,
-      provider: true,
-      providerCreatedAt: true,
-      quarantineReason: true,
-      retryCount: true,
-      state: true,
-    },
-    take: 50,
-    ...(state === undefined ? {} : { where: { state } }),
-  });
-  return Object.freeze(rows.map((row) => Object.freeze(row)));
 }
 
 function parsePolicy(value: string): PolicyEnvelope | null {

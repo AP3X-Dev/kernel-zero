@@ -28,16 +28,6 @@ Media type: `application/vnd.kernel-zero.exceptions+json;version=1`
 
 Bundles contain opaque grant IDs and deterministic matching fields only. Grants are sorted by exception ID. Lifetime is at most 24 hours and never extends a grant. Integrity omits `integrity` and `signature`; an Ed25519 signature covers the raw 32-byte SHA-256 digest.
 
-## PolicyApproval v1 / WorkspaceTrustBundle v1 / PolicyCustodyEvidence v1
-
-Media types: `application/vnd.kernel-zero.policy-approval+json;version=1`, `application/vnd.kernel-zero.workspace-trust+json;version=1`, `application/vnd.kernel-zero.custody-evidence+json;version=1`. All three are profile-independent kernel contracts under `kernel-zero.dev/custody/v1`.
-
-A `PolicyApproval` binds one workspace, one policy identity (`kind`, `name`, `revision`, `digest`), opaque UUIDv7 approval, author, and approver IDs (author and approver must differ), and a signed `approvedAt`. Its integrity digest is RFC 8785 SHA-256 over every field except `integrity` and `signature`; the Ed25519 signature covers the raw 32-byte digest.
-
-A `WorkspaceTrustBundle` is the externally protected trust anchor: one workspace, a monotonic revision, and a unique key-ID-sorted list of strict Ed25519 public JWKs (`kty` `OKP`, `crv` `Ed25519`, 32-byte unpadded base64url `x`) each with `validFrom`, nullable `validUntil`, and nullable `revokedFrom`. Its integrity covers everything but `integrity`. It is not self-authenticating.
-
-`PolicyCustodyEvidence` is the deterministic offline proof: workspace, policy identity, approval digest and time, trust-bundle digest, revision, and key ID, tool, result, sorted findings, and integrity. It has no run ID, wall-clock, or exception fields. Authority is judged only at the signed `approvedAt`: `validFrom <= approvedAt`, `validUntil` null or `approvedAt <= validUntil`, and `revokedFrom` null or `approvedAt < revokedFrom`. The closed finding codes are `CUSTODY_TRUST_INTEGRITY_INVALID` and `CUSTODY_WORKSPACE_MISMATCH` (subject `workspace:<workspaceId>`), `CUSTODY_APPROVAL_INTEGRITY_INVALID`, `CUSTODY_MAKER_CHECKER_INVALID`, and `CUSTODY_APPROVAL_SIGNATURE_INVALID` (subject `approval:<approvalId>`), `CUSTODY_POLICY_IDENTITY_MISMATCH` and `CUSTODY_POLICY_DIGEST_MISMATCH` (subject `policy:<kind>:<name>:<revision>`), and `CUSTODY_AUTHORITY_UNTRUSTED` and `CUSTODY_AUTHORITY_TIME_INVALID` (subject `authority:<keyId>`). Custody findings are never exception-eligible.
-
 ## ManifestPolicy v1 / ManifestEvidence v1
 
 Media types: `application/vnd.kernel-zero.policy+json;version=1` (policy), `application/vnd.kernel-zero.evidence+json;version=1` (evidence) — the same two constants as RepositoryPolicy and RepositoryEvidence.

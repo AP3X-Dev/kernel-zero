@@ -5,7 +5,7 @@ import { generateUuidV7, isSha256Digest } from "@kernel-zero/domain";
 import { createAuditRepository } from "./audit";
 import type { PersistenceClient } from "./client";
 
-type ExceptionActorInput = Readonly<{ actorUserId: string; correlationId: string; workspaceId: string }>;
+type ExceptionActorInput = Readonly<{ correlationId: string; workspaceId: string }>;
 
 export async function requestException(client: PersistenceClient, input: ExceptionActorInput & Readonly<{
   findingFingerprint: string; issueUrl?: string | null; policyDigest: string; rationale: string; ruleId: string; validUntil: Date;
@@ -27,7 +27,7 @@ export async function requestException(client: PersistenceClient, input: Excepti
     const created = await tx.exceptionRequest.create({ data: {
       decisionState: "pending", findingFingerprint: input.findingFingerprint, id,
       issueUrl: input.issueUrl ?? null, policyDigest: input.policyDigest, rationale: input.rationale.trim(),
-      requesterId: input.actorUserId, ruleId: input.ruleId, validUntil: input.validUntil, workspaceId: input.workspaceId,
+      ruleId: input.ruleId, validUntil: input.validUntil, workspaceId: input.workspaceId,
     } });
     await appendAudit(tx, input, "exception.requested", id, { policyDigest: input.policyDigest, ruleId: input.ruleId });
     return Object.freeze({ id: created.id });
@@ -41,10 +41,9 @@ export async function decideException(client: PersistenceClient, input: Exceptio
   await client.$transaction(async (tx) => {
     const request = await tx.exceptionRequest.findFirst({ where: { id: input.exceptionId, workspaceId: input.workspaceId } });
     if (request === null) throw failure("NOT_FOUND", "exception");
-    if (request.requesterId === input.actorUserId) throw failure("FORBIDDEN", "maker_checker");
     const changed = await tx.exceptionRequest.updateMany({
-      data: { decidedAt: new Date(), deciderId: input.actorUserId, decisionNote: input.decisionNote.trim(), decisionState: input.decision },
-      where: { decisionState: "pending", id: input.exceptionId, requesterId: { not: input.actorUserId }, workspaceId: input.workspaceId },
+      data: { decidedAt: new Date(), decisionNote: input.decisionNote.trim(), decisionState: input.decision },
+      where: { decisionState: "pending", id: input.exceptionId, workspaceId: input.workspaceId },
     });
     if (changed.count !== 1) throw failure("CONFLICT", "decision_race");
     await appendAudit(tx, input, `exception.${input.decision}`, input.exceptionId, { decision: input.decision });
@@ -55,7 +54,7 @@ export async function revokeException(client: PersistenceClient, input: Exceptio
   if (input.reason.trim().length < 1 || input.reason.trim().length > 1_000) throw failure("VALIDATION_FAILED", "reason");
   await client.$transaction(async (tx) => {
     const changed = await tx.exceptionRequest.updateMany({
-      data: { revocationReason: input.reason.trim(), revokedAt: new Date(), revokedById: input.actorUserId },
+      data: { revocationReason: input.reason.trim(), revokedAt: new Date() },
       where: { decisionState: "approved", id: input.exceptionId, revokedAt: null, workspaceId: input.workspaceId },
     });
     if (changed.count !== 1) throw failure("NOT_FOUND", "active_exception");
@@ -74,7 +73,7 @@ export function isExceptionApplicable(
 }
 
 async function appendAudit(tx: Parameters<typeof createAuditRepository>[0], input: ExceptionActorInput, actionCode: string, subjectId: string, metadata: Record<string, string>): Promise<void> {
-  await createAuditRepository(tx).append({ actionCode, actor: { kind: "user", userId: input.actorUserId }, correlationId: input.correlationId, description: actionCode.replaceAll(".", " "), metadata, subjectId, subjectType: "exception", workspaceOpaqueId: input.workspaceId });
+  await createAuditRepository(tx).append({ actionCode, actor: { kind: "operator" }, correlationId: input.correlationId, description: actionCode.replaceAll(".", " "), metadata, subjectId, subjectType: "exception", workspaceOpaqueId: input.workspaceId });
 }
 
 function failure(code: string, reason: string): Error { return new Error(`${code}:${reason}`); }

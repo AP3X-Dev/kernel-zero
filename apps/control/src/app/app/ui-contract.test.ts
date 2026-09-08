@@ -9,40 +9,15 @@ const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 describe("route and responsive UI contract", () => {
   it("ships every named application route", () => {
     const routes = [
-      "../access/sign-in/page.tsx",
-      "../access/register/page.tsx",
-      "../access/recover/page.tsx",
-      "../access/reset/page.tsx",
-      "../join/[token]/page.tsx",
-      "../setup/workspace/page.tsx",
       "page.tsx",
       "policies/page.tsx",
       "policies/[pack]/page.tsx",
       "runs/page.tsx",
       "runs/[runId]/page.tsx",
       "exceptions/page.tsx",
-      "people/page.tsx",
-      "settings/workspace/page.tsx",
-      "settings/custody/page.tsx",
-      "settings/subscription/page.tsx",
       "settings/audit/page.tsx",
-      "../ops/page.tsx",
-      "../ops/payment-events/page.tsx",
     ];
     for (const route of routes) expect(existsSync(resolve(appRoot, "app", route))).toBe(true);
-  });
-
-  it("server-gates every tenant and operator page instead of relying on navigation visibility", () => {
-    const workspacePages = [
-      "page.tsx", "policies/page.tsx", "policies/[pack]/page.tsx", "runs/page.tsx", "runs/[runId]/page.tsx",
-      "exceptions/page.tsx", "people/page.tsx", "settings/workspace/page.tsx", "settings/custody/page.tsx", "settings/subscription/page.tsx", "settings/audit/page.tsx",
-    ];
-    for (const page of workspacePages) {
-      expect(readFileSync(resolve(appRoot, "app", page), "utf8")).toContain("requireWorkspaceRoute(");
-    }
-    for (const page of ["../ops/page.tsx", "../ops/payment-events/page.tsx"]) {
-      expect(readFileSync(resolve(appRoot, "app", page), "utf8")).toContain("requireOperatorRoute(");
-    }
   });
 
   it("has visible focus, 320px support, narrow row cards, and reduced-motion behavior", () => {

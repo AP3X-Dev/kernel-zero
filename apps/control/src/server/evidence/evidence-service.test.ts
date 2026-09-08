@@ -109,14 +109,12 @@ class MemoryRepository implements EvidenceRepository {
   saveEvidence(input: EvidenceSaveInput): Promise<EvidenceSaveResult> { this.saves.push(input); return Promise.resolve(this.saveResult); }
 }
 
-const actor = { capabilityDocument: { capabilities: ["evidence.submit"] }, isOwner: false as const, userId: "user-1" };
-const submission = (document: unknown) => ({ actor, correlationId: "0195f000-0000-7000-8000-000000000004", document, workspaceId });
+const submission = (document: unknown) => ({ correlationId: "0195f000-0000-7000-8000-000000000004", document, workspaceId });
 
 describe("EvidenceService", () => {
-  it("enforces workspace authentication and evidence.submit before repository access", async () => {
+  it("refuses evidence addressed to another workspace before repository access", async () => {
     const repository = new MemoryRepository();
     const service = new EvidenceService(repository);
-    await expect(service.submit({ ...submission(evidence()), actor: { ...actor, capabilityDocument: { capabilities: ["evidence.read"] } } }, now)).rejects.toMatchObject({ code: "FORBIDDEN" });
     const otherWorkspace = { ...evidence(), workspace: "0195f000-0000-7000-8000-000000000099" };
     const mismatched = { ...otherWorkspace, integrity: { algorithm: "sha256" as const, digest: canonicalEvidenceDigest(otherWorkspace) } };
     await expect(service.submit({ ...submission(mismatched) }, now)).rejects.toMatchObject({ code: "INVALID_EVIDENCE", reason: "workspace_mismatch" });

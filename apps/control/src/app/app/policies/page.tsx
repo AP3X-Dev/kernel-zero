@@ -1,16 +1,16 @@
 import { loadPoliciesView } from "../../../server/application/governance-view";
 import { EmptyState, PageHeading, Status } from "../ui-components";
-import { requireWorkspaceRoute } from "../route-context";
+import { workspaceRoute } from "../route-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function PoliciesPage() {
-  const { context, runtime } = await requireWorkspaceRoute("policy.read", "/app/policies");
-  const policies = await loadPoliciesView(runtime.prisma, context.workspace.id);
+  const { runtime, workspaceId } = workspaceRoute();
+  const policies = await loadPoliciesView(runtime.prisma, workspaceId);
   return (
     <main className="app-main" id="main-content">
       <PageHeading
-        description="Author ordered deterministic checks, separate draft authors from approvers, and activate immutable revisions."
+        description="Author ordered deterministic checks, approve them, and activate immutable revisions."
       >Policies</PageHeading>
       {policies.length === 0 ? (
         <EmptyState title="No policies yet">Create the first policy through the governed policy service to begin repository verification.</EmptyState>

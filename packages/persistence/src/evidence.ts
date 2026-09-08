@@ -4,13 +4,11 @@ import type { Prisma } from "@prisma/client";
 
 import { StoredEvidenceSchema, type StoredEvidence } from "@kernel-zero/contracts";
 import {
-  PLAN_CATALOGUE,
   generateUuidV7,
   isCorrelationId,
   isSha256Digest,
   isUuidV7,
   parsePagination,
-  type PlanName,
 } from "@kernel-zero/domain";
 
 import { createAuditRepository } from "./audit";
@@ -26,7 +24,6 @@ export type StoreEvidenceRunInput = Readonly<{
   attestationState: EvidenceAttestationState;
   correlationId: string;
   document: StoredEvidence;
-  submitterId: string;
   workspaceId: string;
 }>;
 
@@ -56,7 +53,6 @@ export type EvidenceRunReview = Readonly<{
   runId: string;
   signatureKeyId: string | null;
   status: EvidenceResultStatus;
-  submitterId: string;
   toolVersion: string;
   warningCount: number;
 }>;
@@ -91,7 +87,6 @@ export type EvidenceRunFilters = Readonly<{
   policyDigest?: string;
   repositoryLabel?: string;
   status?: EvidenceResultStatus;
-  submitterId?: string;
   workspaceId: string;
 }>;
 
@@ -114,7 +109,7 @@ export type EvidencePage<T> = Readonly<{
 export type EvidenceRetentionInput = Readonly<{
   batchSize?: number;
   correlationId: string;
-  plan: PlanName;
+  retentionDays: number;
   workspaceId: string;
 }>;
 
@@ -143,7 +138,6 @@ const RUN_REVIEW_SELECT = Object.freeze({
   runId: true,
   signatureKeyId: true,
   status: true,
-  submitterId: true,
   toolVersion: true,
   warningCount: true,
 } as const satisfies Prisma.EvidenceRunSelect);
@@ -216,7 +210,6 @@ export async function listEvidenceRuns(
       ...(input.policyDigest === undefined ? {} : { policyDigest: input.policyDigest }),
       ...(input.repositoryLabel === undefined ? {} : { repositoryLabel: input.repositoryLabel }),
       ...(input.status === undefined ? {} : { status: input.status }),
-      ...(input.submitterId === undefined ? {} : { submitterId: input.submitterId }),
       ...(input.generatedFrom === undefined && input.generatedTo === undefined ? {} : {
         generatedAt: {
           ...(input.generatedFrom === undefined ? {} : { gte: input.generatedFrom }),
@@ -274,8 +267,8 @@ export async function deleteExpiredEvidence(
   if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 1_000) {
     throw failure("VALIDATION_FAILED", "batchSize");
   }
-  if (!Object.hasOwn(PLAN_CATALOGUE, input.plan)) throw failure("VALIDATION_FAILED", "plan");
-  const retentionDays = PLAN_CATALOGUE[input.plan].limits.evidenceRetentionDays;
+  const { retentionDays } = input;
+  if (!Number.isSafeInteger(retentionDays) || retentionDays < 1 || retentionDays > 3_650) throw failure("VALIDATION_FAILED", "retentionDays");
   const cutoff = new Date(now.getTime() - retentionDays * 86_400_000);
 
   return client.$transaction(async (tx) => {
@@ -344,7 +337,6 @@ async function storeInTransaction(
       signatureKeyId: document.signature?.keyId ?? null,
       signatureValue: document.signature?.value ?? null,
       status: document.result.status,
-      submitterId: input.submitterId,
       toolVersion: document.tool.version,
       warningCount: document.result.warnings,
       workspaceId: input.workspaceId,
@@ -375,7 +367,7 @@ async function storeInTransaction(
   }
   await createAuditRepository(tx).append({
     actionCode: "evidence.recorded",
-    actor: { kind: "user", userId: input.submitterId },
+    actor: { kind: "operator" },
     correlationId: input.correlationId,
     description: "Repository evidence recorded.",
     metadata: {
@@ -421,7 +413,6 @@ function toRunReview(row: RunReviewRow): EvidenceRunReview {
     runId: row.runId,
     signatureKeyId: row.signatureKeyId,
     status: row.status,
-    submitterId: row.submitterId,
     toolVersion: row.toolVersion,
     warningCount: row.warningCount,
   });
@@ -490,14 +481,12 @@ function decodeCursor(value: string): TimestampCursor {
 
 function validateActorContext(input: StoreEvidenceRunInput): void {
   ensureWorkspace(input.workspaceId);
-  if (!isUuidV7(input.submitterId)) throw failure("VALIDATION_FAILED", "submitterId");
   if (!isCorrelationId(input.correlationId)) throw failure("VALIDATION_FAILED", "correlationId");
 }
 
 function validateRunFilters(input: EvidenceRunFilters): void {
   if (input.policyDigest !== undefined && !isSha256Digest(input.policyDigest)) throw failure("VALIDATION_FAILED", "policyDigest");
   if (input.repositoryLabel !== undefined && (input.repositoryLabel.length < 1 || input.repositoryLabel.length > 200)) throw failure("VALIDATION_FAILED", "repositoryLabel");
-  if (input.submitterId !== undefined && !isUuidV7(input.submitterId)) throw failure("VALIDATION_FAILED", "submitterId");
   if (input.generatedFrom !== undefined && !Number.isFinite(input.generatedFrom.getTime())) throw failure("VALIDATION_FAILED", "generatedFrom");
   if (input.generatedTo !== undefined && !Number.isFinite(input.generatedTo.getTime())) throw failure("VALIDATION_FAILED", "generatedTo");
   if (input.generatedFrom !== undefined && input.generatedTo !== undefined && input.generatedFrom > input.generatedTo) {

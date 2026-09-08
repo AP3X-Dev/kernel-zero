@@ -1,17 +1,17 @@
 import { loadRunsView } from "../../../server/application/governance-view";
 import { EmptyState, PageHeading, Status } from "../ui-components";
-import { requireWorkspaceRoute } from "../route-context";
+import { workspaceRoute } from "../route-context";
 
 type RunsPageProps = Readonly<{ searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>> }>;
 
 export const dynamic = "force-dynamic";
 
 export default async function RunsPage({ searchParams }: RunsPageProps) {
-  const { context, runtime } = await requireWorkspaceRoute("evidence.read", "/app/runs");
+  const { runtime, workspaceId } = workspaceRoute();
   const query = await searchParams;
   const rawStatus = typeof query.status === "string" ? query.status : undefined;
   const status = rawStatus === "error" || rawStatus === "fail" || rawStatus === "pass" ? rawStatus : undefined;
-  const runs = await loadRunsView(runtime.prisma, context.workspace.id, status);
+  const runs = await loadRunsView(runtime.prisma, workspaceId, status);
   return (
     <main className="app-main" id="main-content">
       <PageHeading description="Review deterministic repository results without uploading repository source.">Verification runs</PageHeading>
@@ -27,7 +27,7 @@ export default async function RunsPage({ searchParams }: RunsPageProps) {
         </form>
       </section>
       {runs.length === 0 ? (
-        <EmptyState title="No matching verification runs">Submit validator evidence through the authenticated API, or change the result filter.</EmptyState>
+        <EmptyState title="No matching verification runs">Submit validator evidence through the token-protected API, or change the result filter.</EmptyState>
       ) : (
         <ul aria-label="Verification runs" className="row-list">
           {runs.map((run) => (

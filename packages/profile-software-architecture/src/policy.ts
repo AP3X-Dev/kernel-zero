@@ -33,7 +33,8 @@ export const PolicyCheckSchema = z.discriminatedUnion("kind", [
     kind: z.literal("require-governed-operation"),
     files: GlobList,
     registryExport: NonemptyExactStringSchema,
-    requiredKeys: uniqueArray(z.enum(["capability", "tenantScope", "quota", "audit", "idempotency"]), 5, 5),
+    // ponytail: a registry may declare any non-empty subset of the closed key set; the kernel declares three since the SaaS shell left.
+    requiredKeys: uniqueArray(z.enum(["capability", "tenantScope", "quota", "audit", "idempotency"]), 1, 5),
     declarationCalls: ExactList.default(["defineGovernedAction"]),
   }),
   z.strictObject({

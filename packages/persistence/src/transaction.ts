@@ -5,18 +5,15 @@ import type { PrismaClient } from "@prisma/client";
 import { createAuditRepository, type TransactionAuditRepository } from "./audit";
 import type { TransactionClient } from "./client";
 import { mapKnownPersistenceError } from "./constraint-errors";
-import { createQuotaRepository, type TransactionQuotaRepository } from "./quota";
 
 export type TransactionRepositorySet = Readonly<{
   audit: TransactionAuditRepository;
-  quota: TransactionQuotaRepository;
   transaction: TransactionClient;
 }>;
 
 export function transactionRepositorySet(tx: TransactionClient): TransactionRepositorySet {
   return Object.freeze({
     audit: createAuditRepository(tx),
-    quota: createQuotaRepository(tx),
     transaction: tx,
   });
 }

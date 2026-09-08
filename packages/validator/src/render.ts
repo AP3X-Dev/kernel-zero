@@ -1,4 +1,4 @@
-import type { PolicyCustodyEvidence, StoredEvidence } from "@kernel-zero/contracts";
+import type { StoredEvidence } from "@kernel-zero/contracts";
 import type { RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
 
 /** Hard cap on rendered findings so terminal output stays bounded; the JSON artifact remains complete. */
@@ -28,17 +28,6 @@ export function renderPolicy(policy: RepositoryPolicy): string {
   for (const rule of policy.rules) {
     lines.push(`${rule.level} ${rule.id} (${rule.check.kind}): ${rule.title}`);
     lines.push(`  remediation: ${rule.remediation}`);
-  }
-  return `${lines.join("\n")}\n`;
-}
-
-export function renderCustody(custody: PolicyCustodyEvidence): string {
-  const lines = [
-    `custody: ${custody.result.status} (${String(custody.result.errors)} findings) policy ${custody.policy.name} revision ${String(custody.policy.revision)} approval ${custody.approval.approvalId} key ${custody.trust.keyId}`,
-  ];
-  for (const finding of custody.findings) {
-    lines.push(`error ${finding.code} ${finding.subject}`);
-    lines.push(`  ${finding.message}`);
   }
   return `${lines.join("\n")}\n`;
 }

@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "node scripts/start-browser-server.mjs",
-    url: "http://localhost:3100/access/sign-in",
+    url: "http://localhost:3100/",
     reuseExistingServer: false,
     timeout: 120_000,
   },

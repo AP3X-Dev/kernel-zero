@@ -56,7 +56,6 @@ export function createEvidenceRepository(client: PersistenceClient): EvidenceRep
           attestationState: input.attestationState,
           correlationId: input.correlationId,
           document: input.evidence,
-          submitterId: input.submitterId,
           workspaceId: input.workspaceId,
         });
         return { kind: result.created ? "created" : "duplicate" };

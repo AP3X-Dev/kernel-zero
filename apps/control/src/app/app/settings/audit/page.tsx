@@ -1,16 +1,16 @@
 import { loadAuditView } from "../../../../server/application/governance-view";
 import { EmptyState, PageHeading } from "../../ui-components";
-import { requireWorkspaceRoute } from "../../route-context";
+import { workspaceRoute } from "../../route-context";
 
 type AuditPageProps = Readonly<{ searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>> }>;
 
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage({ searchParams }: AuditPageProps) {
-  const { context, runtime } = await requireWorkspaceRoute("audit.read", "/app/settings/audit");
+  const { runtime, workspaceId } = workspaceRoute();
   const search = await searchParams;
   const query = typeof search.query === "string" ? search.query.slice(0, 200) : undefined;
-  const records = await loadAuditView(runtime.prisma, context.workspace.id, query);
+  const records = await loadAuditView(runtime.prisma, workspaceId, query);
   return (
     <main className="app-main" id="main-content">
       <PageHeading description="Safe audit projections omit forensic address and user-agent fields.">Audit history</PageHeading>
@@ -27,7 +27,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
             <li className="row-card" key={record.id}>
               <dl><dt>Action</dt><dd>{record.actionCode}<br /><span className="muted">{record.description}</span></dd></dl>
               <dl><dt>Subject</dt><dd>{record.subjectType}<br /><span className="muted">{record.subjectId}</span></dd></dl>
-              <dl><dt>Recorded</dt><dd>{record.createdAt.toLocaleString("en-US", { timeZone: "UTC" })} UTC<br /><span className="muted">{record.actorKind === "system" ? record.systemActorRef ?? "system" : "workspace user"}</span></dd></dl>
+              <dl><dt>Recorded</dt><dd>{record.createdAt.toLocaleString("en-US", { timeZone: "UTC" })} UTC<br /><span className="muted">{record.actorKind === "system" ? record.systemActorRef ?? "system" : "operator"}</span></dd></dl>
             </li>
           ))}
         </ul>

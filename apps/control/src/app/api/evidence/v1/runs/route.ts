@@ -1,13 +1,12 @@
 import { resolveRequestContext } from "../../../../../server/authorization/request-context";
 import { EvidenceIngressError } from "../../../../../server/evidence/errors";
-import type { EvidenceActor, EvidenceSubmissionResult } from "../../../../../server/evidence/evidence-service";
+import type { EvidenceSubmissionResult } from "../../../../../server/evidence/evidence-service";
 import { EvidenceService } from "../../../../../server/evidence/evidence-service";
 import { createEvidenceRepository } from "../../../../../server/evidence/persistence-adapter";
 import { readEvidenceRequest } from "../../../../../server/evidence/transport";
-import { getRuntime } from "../../../../../server/identity/runtime";
+import { getRuntime } from "../../../../../server/runtime";
 
 export type EvidenceRouteContext = Readonly<{
-  actor: EvidenceActor;
   correlationId: string;
   workspaceId: string;
 }>;
@@ -16,7 +15,6 @@ export type EvidenceRouteDependencies = Readonly<{
   resolveSubmission: (request: Request) => Promise<EvidenceRouteContext | null>;
   service: Readonly<{
     submit: (input: Readonly<{
-      actor: EvidenceActor;
       correlationId: string;
       document: unknown;
       workspaceId: string;
@@ -33,7 +31,6 @@ export function createEvidencePostHandler(dependencies: EvidenceRouteDependencie
       correlationId = context.correlationId;
       const document = await readEvidenceRequest(request);
       const result = await dependencies.service.submit({
-        actor: context.actor,
         correlationId: context.correlationId,
         document,
         workspaceId: context.workspaceId,
@@ -47,11 +44,9 @@ export function createEvidencePostHandler(dependencies: EvidenceRouteDependencie
 }
 
 const productionDependencies: EvidenceRouteDependencies = Object.freeze({
-  async resolveSubmission(request) {
-    const resolution = await resolveRequestContext(request);
-    if (resolution.kind === "unauthenticated") return null;
-    if (resolution.kind === "workspace-required") throw new EvidenceIngressError(403, "WORKSPACE_REQUIRED", "workspace_required");
-    return resolution.context;
+  resolveSubmission(request) {
+    const resolution = resolveRequestContext(request, getRuntime().config);
+    return Promise.resolve(resolution.kind === "ok" ? resolution.context : null);
   },
   service: Object.freeze({
     submit(input: Parameters<EvidenceRouteDependencies["service"]["submit"]>[0]) {

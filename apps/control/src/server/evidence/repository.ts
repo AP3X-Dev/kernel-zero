@@ -26,7 +26,6 @@ export type EvidenceSaveInput = Readonly<{
   attestationState: EvidenceAttestationState;
   correlationId: string;
   evidence: StoredEvidence;
-  submitterId: string;
   workspaceId: string;
 }>;
 

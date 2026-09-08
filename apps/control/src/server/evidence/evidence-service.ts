@@ -3,14 +3,11 @@ import "server-only";
 import { EvidenceEnvelopeSchema, PolicyEnvelopeSchema, type StoredEvidence } from "@kernel-zero/contracts";
 import { profileForPolicyKind } from "@kernel-zero/profiles";
 
-import { requireCapability, type WorkspaceAuthoritySource } from "../authorization/workspace";
 import { verifyEvidenceAttestation } from "./attestation";
 import { EvidenceIngressError, invalidEvidence } from "./errors";
 import type { EvidenceRepository } from "./repository";
 
 const MAXIMUM_FUTURE_SKEW_MS = 15 * 60 * 1_000;
-
-export type EvidenceActor = WorkspaceAuthoritySource & Readonly<{ userId: string }>;
 
 export type EvidenceSubmissionResult = Readonly<{
   attestationState: "attested" | "recorded";
@@ -26,14 +23,10 @@ export class EvidenceService {
   }
 
   async submit(input: Readonly<{
-    actor: EvidenceActor;
     correlationId: string;
     document: unknown;
     workspaceId: string;
   }>, now = new Date()): Promise<EvidenceSubmissionResult> {
-    const denied = requireCapability(input.actor, "evidence.submit");
-    if (denied !== null) throw new EvidenceIngressError(403, denied.code, "capability_denied");
-
     const envelope = EvidenceEnvelopeSchema.safeParse(input.document);
     if (!envelope.success) throw invalidEvidence("contract");
     if (envelope.data.workspace !== input.workspaceId) throw invalidEvidence("workspace_mismatch");
@@ -68,7 +61,6 @@ export class EvidenceService {
       attestationState,
       correlationId: input.correlationId,
       evidence,
-      submitterId: input.actor.userId,
       workspaceId: input.workspaceId,
     });
     if (saved.kind === "conflict") throw new EvidenceIngressError(409, "CONFLICT", "run_id_digest_conflict");

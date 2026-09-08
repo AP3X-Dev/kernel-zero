@@ -16,16 +16,6 @@ export type {
   TransactionAuditRepository,
 } from "./audit";
 export {
-  createQuotaRepository,
-  QuotaCounterInvariantError,
-  QuotaExceededError,
-} from "./quota";
-export type {
-  QuotaReservation,
-  QuotaReservationRequest,
-  TransactionQuotaRepository,
-} from "./quota";
-export {
   isSerializationConflict,
   runSerializableTransaction,
   transactionRepositorySet,
@@ -34,23 +24,7 @@ export type {
   SerializableTransactionOptions,
   TransactionRepositorySet,
 } from "./transaction";
-export {
-  createWorkspace,
-  deleteWorkspace,
-  resolveWorkspaceContext,
-  tenantSelector,
-  transferWorkspaceOwnership,
-} from "./tenancy";
-export type { CreateWorkspaceInput, WorkspaceContext } from "./tenancy";
-export {
-  acceptInvitation,
-  cancelInvitation,
-  issueInvitation,
-  listWorkspaceRoster,
-  markInvitationDelivery,
-  resendInvitation,
-} from "./invitations";
-export type { IssuedInvitation } from "./invitations";
+export { tenantSelector } from "./tenancy";
 export {
   activatePolicyRevision,
   approvePolicyRevision,
@@ -70,16 +44,6 @@ export {
   registerSigningKey,
   revokeSigningKey,
 } from "./signing-keys";
-export {
-  approvePolicyRevisionWithCustody,
-  createPolicyApprovalArtifact,
-  findPolicyApprovalArtifact,
-  listPolicyAuthorityKeys,
-  readWorkspaceTrustBundle,
-  registerPolicyAuthorityKey,
-  revokePolicyAuthorityKey,
-} from "./policy-custody";
-export type { PolicyAuthorityKeySummary, PolicyAuthoritySigner } from "./policy-custody";
 export {
   deleteExpiredEvidence,
   listEvidenceFindings,
@@ -102,18 +66,3 @@ export type {
   StoreEvidenceRunInput,
   StoreEvidenceRunResult,
 } from "./evidence";
-export {
-  ingestPaymentEvent,
-  markTrialUsed,
-  readDowngradeUsage,
-  readTrialEligibility,
-  readWorkspaceBilling,
-  retryPaymentEvent,
-} from "./billing";
-export type {
-  IngestPaymentEventInput,
-  NormalizedPaymentEvent,
-  PaymentProjectionResult,
-  TrialEligibility,
-  WorkspaceBillingState,
-} from "./billing";

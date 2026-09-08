@@ -1,6 +1,6 @@
 ---
 name: kz-adopt
-description: Install KERNEL ZERO enforcement into a consumer repository: policy file, validator, pre-commit hook, and the CI required check, with the custody warnings. Use when asked to "adopt kernel zero in <repo>", "add the validator to our repo", or "set up the merge gate".
+description: Install KERNEL ZERO enforcement into a consumer repository: policy file, validator, pre-commit hook, and the CI required check, with the protection warnings. Use when asked to "adopt kernel zero in <repo>", "add the validator to our repo", or "set up the merge gate".
 ---
 
 # kz-adopt
@@ -16,7 +16,7 @@ Read `docs/validator-and-hooks.md` first; it is the source of every command belo
 3. Prove it runs: `npm run validator:self`, expect exit 0, 1, or 2 and an `evidence.json`. Exit 2 means the run could not complete; fix that before continuing.
 4. Local hook: copy `.githooks/pre-commit`, tell the owner to run `git config core.hooksPath .githooks`. State plainly that local hooks are feedback, not a security boundary.
 5. CI: copy `.github/workflows/kernel-zero.yml`; tell the owner that a repository administrator must make the `verify` job a required branch check and must protect the workflow, policy, and validator from the contributors being judged.
-6. Custody (optional, once the workspace has a policy authority key): have the owner export the workspace trust bundle and wire `--policy-approval <file> --workspace-trust <file> --custody-out <file>` into the `validator:self` script; both artifacts belong under the same protection as the policy. See "Custody-aware adoption" in `docs/validator-and-hooks.md` for rotation and approval-time semantics. Never generate or hold an authority private key for the target.
+6. Evidence upload (optional): if the target reports to a control plane, CI posts `.kernel-zero/evidence.json` to `POST /api/evidence/v1/runs` with `Authorization: Bearer $KERNEL_ZERO_EVIDENCE_TOKEN`; the token is a CI secret the owner sets, never a value you generate or paste.
 7. Do not push, open a PR, or change branch protection yourself. Hand the owner the exact list of settings to change.
 
-Report: the three exit codes observed, the evidence path, and the two custody items still owned by a human.
+Report: the three exit codes observed, the evidence path, and the two protection items still owned by a human.

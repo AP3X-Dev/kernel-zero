@@ -4,16 +4,8 @@ import type { AppErrorCode } from "@kernel-zero/domain";
 
 const CONSTRAINT_CODES: Readonly<Record<string, AppErrorCode>> = Object.freeze({
   audit_actor_shape_check: "VALIDATION_FAILED",
-  policy_approval_artifact_immutable_update: "CONFLICT",
-  policy_approval_artifact_workspace_revision_key: "CONFLICT",
-  policy_authority_key_public_x_check: "VALIDATION_FAILED",
-  policy_authority_key_revocation_check: "VALIDATION_FAILED",
-  policy_authority_key_validity_check: "VALIDATION_FAILED",
-  policy_authority_key_workspace_key_key: "CONFLICT",
   audit_metadata_bounds_check: "VALIDATION_FAILED",
   audit_record_immutable_update: "CONFLICT",
-  quota_counter_nonnegative_check: "CONFLICT",
-  quota_counter_scope_key: "CONFLICT",
 });
 
 export class PersistenceConstraintError extends Error {

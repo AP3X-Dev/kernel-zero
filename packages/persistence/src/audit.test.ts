@@ -14,8 +14,8 @@ const base = {
 } as const;
 
 describe("immutable audit persistence", () => {
-  it("requires exactly one actor identity and accepts bounded user/system actors", () => {
-    expect(validateAuditRecord({ ...base, actor: { kind: "user", userId: "0195f000-0000-7000-8000-000000000003" } }).ok).toBe(true);
+  it("accepts the operator actor and bounded system actors", () => {
+    expect(validateAuditRecord({ ...base, actor: { kind: "operator" } }).ok).toBe(true);
     expect(validateAuditRecord({ ...base, actor: { kind: "system", reference: "billing-provider" } }).ok).toBe(true);
     expect(validateAuditRecord({ ...base, actor: { kind: "system", reference: " " } }).ok).toBe(false);
   });
@@ -34,11 +34,10 @@ describe("immutable audit persistence", () => {
       },
     };
     const audit = createAuditRepository(tx as never);
-    await audit.append({ ...base, actor: { kind: "user", userId: "0195f000-0000-7000-8000-000000000003" } });
+    await audit.append({ ...base, actor: { kind: "operator" } });
     await audit.listSafe({ limit: 25, workspaceOpaqueId: base.workspaceOpaqueId });
     expect(tx.auditRecord.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
-      actorKind: "user",
-      actorUserId: "0195f000-0000-7000-8000-000000000003",
+      actorKind: "operator",
       systemActorRef: null,
     }) }));
     const select = tx.auditRecord.findMany.mock.calls[0]?.[0].select;

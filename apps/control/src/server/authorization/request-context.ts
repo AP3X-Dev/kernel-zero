@@ -1,44 +1,42 @@
 import "server-only";
 
+import { timingSafeEqual } from "node:crypto";
+
 import { resolveCorrelationId } from "@kernel-zero/domain";
 
-import { loadApplicationWorkspace } from "../application/workspace-view";
-import { getRuntime } from "../identity/runtime";
-import type { WorkspaceAuthoritySource } from "./workspace";
-
-export type RequestActor = WorkspaceAuthoritySource & Readonly<{ userId: string }>;
-
 export type RequestContext = Readonly<{
-  actor: RequestActor;
   correlationId: string;
   workspaceId: string;
 }>;
 
 export type RequestContextResolution =
   | Readonly<{ kind: "unauthenticated" }>
-  | Readonly<{ kind: "workspace-required" }>
   | Readonly<{ context: RequestContext; kind: "ok" }>;
 
-/** One place turns an API request into an actor and workspace; routes never touch sessions or persistence themselves. */
-export async function resolveRequestContext(request: Request): Promise<RequestContextResolution> {
-  const runtime = getRuntime();
-  const session = await runtime.auth.api.getSession({ headers: request.headers });
-  if (session === null) return { kind: "unauthenticated" };
-  const selected = "selectedWorkspaceId" in session.session && typeof session.session.selectedWorkspaceId === "string"
-    ? session.session.selectedWorkspaceId
-    : null;
-  const context = await loadApplicationWorkspace(runtime.prisma, session.user.id, selected);
-  if (context === null) return { kind: "workspace-required" };
+/** One place turns an API request into a workspace context; routes never read configuration themselves. */
+export function resolveRequestContext(
+  request: Request,
+  config: Readonly<{ evidenceToken: string; workspaceId: string }>,
+): RequestContextResolution {
+  const presented = bearerToken(request.headers.get("authorization"));
+  if (presented === null || !tokensMatch(presented, config.evidenceToken)) return { kind: "unauthenticated" };
   return {
     context: {
-      actor: {
-        capabilityDocument: context.membership.roleProfile?.capabilityDocument ?? null,
-        isOwner: context.membership.isOwner,
-        userId: session.user.id,
-      },
       correlationId: resolveCorrelationId(request.headers.get("x-correlation-id")).id,
-      workspaceId: context.workspace.id,
+      workspaceId: config.workspaceId,
     },
     kind: "ok",
   };
+}
+
+function bearerToken(header: string | null): string | null {
+  if (header === null) return null;
+  const match = /^Bearer\s+(\S+)$/iu.exec(header.trim());
+  return match?.[1] ?? null;
+}
+
+function tokensMatch(presented: string, expected: string): boolean {
+  const left = Buffer.from(presented, "utf8");
+  const right = Buffer.from(expected, "utf8");
+  return left.byteLength === right.byteLength && timingSafeEqual(left, right);
 }

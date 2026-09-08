@@ -35,18 +35,11 @@ protected operation. The JSON evidence at `--out` is authoritative; the command
 also prints one summary line and one deterministic line per finding (level,
 rule, path:line:column, code, subject) followed by the policy remediation.
 
-Custody proof is optional and all-or-none: `--policy-approval <file>
---workspace-trust <file> --custody-out <file>` verifies offline that the exact
-policy was approved by a trusted workspace authority before any source is read.
-A failed proof writes only custody evidence and exits `1` without touching
-`--out`; malformed custody input exits `2` and writes nothing.
-
 ## Explain and init
 
 ```text
 kernel-zero explain --policy kernel-zero.policy.json
 kernel-zero explain --evidence .kernel-zero/evidence.json
-kernel-zero explain --custody .kernel-zero/custody.json
 kernel-zero init [--root <dir>] [--workspace <uuid>]
 ```
 

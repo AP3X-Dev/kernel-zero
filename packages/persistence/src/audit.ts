@@ -17,7 +17,7 @@ import { appError } from "@kernel-zero/domain";
 import type { TransactionClient } from "./client";
 
 export type AuditActor =
-  | Readonly<{ kind: "user"; userId: string }>
+  | Readonly<{ kind: "operator" }>
   | Readonly<{ kind: "system"; reference: string }>;
 
 export type AuditMetadata = Readonly<Record<string, JsonPrimitive>>;
@@ -38,7 +38,6 @@ export type AuditRecordInput = Readonly<{
 export const SAFE_AUDIT_SELECT = Object.freeze({
   actionCode: true,
   actorKind: true,
-  actorUserId: true,
   correlationId: true,
   createdAt: true,
   description: true,
@@ -59,11 +58,7 @@ export function validateAuditRecord(input: AuditRecordInput): Result<AuditRecord
   if (!bounded(input.subjectType, 120)) return invalid("subjectType");
   if (!bounded(input.subjectId, 255)) return invalid("subjectId");
   if (!bounded(input.description, 1_000)) return invalid("description");
-  if (input.actor.kind === "user") {
-    if (!isUuidV7(input.actor.userId)) return invalid("actor.userId");
-  } else if (!bounded(input.actor.reference, 120)) {
-    return invalid("actor.reference");
-  }
+  if (input.actor.kind === "system" && !bounded(input.actor.reference, 120)) return invalid("actor.reference");
   if (!hint(input.clientAddressHint, 128)) return invalid("clientAddressHint");
   if (!hint(input.userAgentHint, 1_024)) return invalid("userAgentHint");
   const keys = Object.keys(input.metadata);
@@ -104,13 +99,11 @@ export function createAuditRepository(tx: TransactionClient): TransactionAuditRe
     async append(input) {
       const validation = validateAuditRecord(input);
       if (!validation.ok) throw new AuditValidationError(validation.error);
-      const actorUserId = input.actor.kind === "user" ? input.actor.userId : null;
       const systemActorRef = input.actor.kind === "system" ? input.actor.reference.trim() : null;
       return tx.auditRecord.create({
         data: {
           actionCode: input.actionCode.trim(),
           actorKind: input.actor.kind,
-          actorUserId,
           clientAddressHint: input.clientAddressHint ?? null,
           correlationId: input.correlationId,
           description: input.description.trim(),

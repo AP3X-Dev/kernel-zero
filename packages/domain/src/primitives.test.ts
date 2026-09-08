@@ -5,7 +5,6 @@ import { resolveCorrelationId } from "./correlation";
 import { canonicalSha256, digestBytes, isSha256Digest, sha256 } from "./digest";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, parsePagination } from "./pagination";
 import { normalizeRelativePath } from "./path";
-import { MAX_WORKSPACE_SLUG_LENGTH, withCollisionSuffix, workspaceSlug } from "./slug";
 import { generateUuidV7, isUuidV7, parseUuidV7 } from "./uuid";
 
 describe("canonical JSON and SHA-256", () => {
@@ -64,7 +63,7 @@ describe("UUIDv7 and correlation IDs", () => {
   });
 });
 
-describe("pagination, path, and slug primitives", () => {
+describe("pagination and path primitives", () => {
   it("defaults and caps page sizes", () => {
     expect(parsePagination()).toEqual({ ok: true, value: { limit: DEFAULT_PAGE_SIZE } });
     expect(parsePagination({ limit: MAX_PAGE_SIZE }).ok).toBe(true);
@@ -81,15 +80,5 @@ describe("pagination, path, and slug primitives", () => {
     for (const unsafe of ["../secret", "a/../../secret", "/etc/passwd", "C:\\secret", "\\\\host\\share"]) {
       expect(normalizeRelativePath(unsafe).ok).toBe(false);
     }
-  });
-
-  it("creates bounded fresh slugs and bounded random collision variants", () => {
-    const parsed = workspaceSlug("  Café Architecture Council  ");
-    expect(parsed).toEqual({ ok: true, value: "cafe-architecture-council" });
-    if (!parsed.ok) throw new Error("test setup failed");
-    const collision = withCollisionSuffix(parsed.value, () => Uint8Array.from([1, 2, 3, 4]));
-    expect(collision).toBe("cafe-architecture-council-01020304");
-    expect(collision.length).toBeLessThanOrEqual(MAX_WORKSPACE_SLUG_LENGTH);
-    expect(workspaceSlug("***").ok).toBe(false);
   });
 });

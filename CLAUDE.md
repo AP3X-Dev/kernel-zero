@@ -6,7 +6,7 @@ Every rule here is binding. When a rule and a request conflict, say so and stop.
 
 This repository is a policy-first governance kernel with a compile-time profile seam. Your job is to extend it, not to reinvent it. Before writing anything new, find the existing pattern and follow it. The patterns are:
 
-- Kernel packages: `packages/domain` (pure primitives), `packages/contracts` (strict Zod schemas, public wire formats), `packages/persistence` (Prisma, tenant-scoped repositories, transactions).
+- Kernel packages: `packages/domain` (pure primitives), `packages/contracts` (strict Zod schemas, public wire formats), `packages/persistence` (Prisma, workspace-scoped repositories, transactions). The workspace identifier is the configured `KERNEL_ZERO_WORKSPACE_ID` constant; there is one operator and no identity, tenancy, billing, or quota layer (ADR 2026-09-08-single-operator-kernel).
 - Profiles: `packages/profile-*` own a policy schema, an evidence schema, a checker, and compatibility rules. `packages/profiles` registers them. Kernel packages never import a profile; the self-policy enforces it.
 - Control plane: `apps/control/src/server/*` holds application services, `apps/control/src/app/api/**` holds transport routes, `apps/control/src/app/**` holds server-rendered pages.
 - Validator: `packages/validator` is a standalone, network-free CLI over the TypeScript compiler API.
@@ -15,19 +15,19 @@ Only when no existing seam can carry the feature do you add one, and then it goe
 
 ## 2. Search before you create
 
-Every type, schema, helper, capability, quota key, message code, and rule id you need most likely exists. Find it before writing it:
+Every type, schema, helper, message code, configuration key, and rule id you need most likely exists. Find it before writing it:
 
 1. `grep -rl <symbol> packages apps` to list candidate files, then read only those.
 2. Package barrels are the public surface: `packages/*/src/index.ts`. If a symbol is not exported there, it is private to that package on purpose.
-3. Rule ids live in `kernel-zero.policy.json`; capabilities in `packages/domain/src/authorization.ts`; quota keys and plans in `packages/domain/src/entitlements.ts`; governed actions in `apps/control/src/server/governed-actions.ts`.
+3. Rule ids live in `kernel-zero.policy.json`; governed actions in `apps/control/src/server/governed-actions.ts`; configuration keys in `apps/control/src/server/config/config.ts`.
 
 Never duplicate a schema, type, or helper because searching felt slow. Never add a dependency for something a few lines or an installed package already does.
 
 ## 3. The layered request path
 
-1. **Transport route** (`apps/control/src/app/api/**`): resolve the actor and correlation id, parse the body with the strict contract schema, call exactly one application service, map errors through the existing error helpers. Routes never import `@kernel-zero/persistence` or `@prisma/client`.
-2. **Application service** (`apps/control/src/server/<area>/`): `import "server-only"` first. Check capability with `requireCapability` before any lookup. Hold the business decisions. No raw Prisma.
-3. **Governed action**: every mutation is declared with `defineGovernedAction` and all six fields: `audit`, `capability`, `idempotency`, `quota`, `tenantScope`, `transactionTimeoutMs`. Quota is reserved inside the same serializable transaction as the write. Audit is written in that transaction or the mutation rolls back.
+1. **Transport route** (`apps/control/src/app/api/**`): resolve the request context (bearer token, workspace, correlation id) with `resolveRequestContext`, parse the body with the strict contract schema, call exactly one application service, map errors through the existing error helpers. Routes never import `@kernel-zero/persistence` or `@prisma/client`.
+2. **Application service** (`apps/control/src/server/<area>/`): `import "server-only"` first. Parse anything untrusted before any lookup. Hold the business decisions. No raw Prisma.
+3. **Governed action**: every mutation is declared with `defineGovernedAction` and all four fields: `audit`, `idempotency`, `tenantScope`, `transactionTimeoutMs`. Audit is written in the same serializable transaction as the write or the mutation rolls back. The audit actor is `{ kind: "operator" }` or `{ kind: "system", reference }`.
 4. **Persistence** (`packages/persistence`): the only layer that touches the database. Every tenant selector takes `workspaceId`. Missing and sibling-tenant objects both return the same not-found.
 5. **Profile logic** stays in the profile package. Kernel services look up the profile by policy `kind` through `@kernel-zero/profiles` and never import a profile directly.
 
@@ -52,7 +52,7 @@ Comment the outcome, not the code. A deliberate simplification with a known ceil
 
 ## 7. UI
 
-- Pages are server components. Forms post to server actions. The only client components are the shared `FormSubmit` and `ConfirmAction`; reuse them rather than adding a third. No client state library.
+- Pages are server components and read through `workspaceRoute()`. Forms post to server actions. There are no client components today; if a form needs pending or confirmation state, add exactly one shared client component beside `ui-components.tsx` and reuse it. No client state library.
 - Reusable pieces live in `apps/control/src/app/app/ui-components.tsx`; route-local pieces sit beside their route. Extend or compose an existing component before adding a similar one.
 - Colors come only from the tokens in `apps/control/src/app/globals.css` (`--canvas`, `--surface`, `--ink`, `--muted`, `--line`, `--brand`, `--positive`, `--warning`, `--danger`, `--focus`). No literal hex values, no forced theme classes.
 - Every primary route must keep passing the keyboard and axe checks in `npm run test:browser`.

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { loadRunDetailView } from "../../../../server/application/governance-view";
 import { PageHeading, Status } from "../../ui-components";
-import { requireWorkspaceRoute } from "../../route-context";
+import { workspaceRoute } from "../../route-context";
 
 type RunPageProps = Readonly<{
   params: Promise<Readonly<{ runId: string }>>;
@@ -15,8 +15,8 @@ export default async function RunPage({ params, searchParams }: RunPageProps) {
   const { runId } = await params;
   const search = await searchParams;
   const query = typeof search.query === "string" ? search.query.trim().toLowerCase().slice(0, 200) : "";
-  const { context, runtime } = await requireWorkspaceRoute("evidence.read", `/app/runs/${runId}`);
-  const detail = await loadRunDetailView(runtime.prisma, context.workspace.id, runId);
+  const { runtime, workspaceId } = workspaceRoute();
+  const detail = await loadRunDetailView(runtime.prisma, workspaceId, runId);
   if (detail === null) notFound();
   const { findings, run } = detail;
   const visibleFindings = query === "" ? findings : findings.filter((finding) =>

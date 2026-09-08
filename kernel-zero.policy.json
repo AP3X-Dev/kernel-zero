@@ -114,9 +114,7 @@
         ],
         "registryExport": "GOVERNED_ACTIONS",
         "requiredKeys": [
-          "capability",
           "tenantScope",
-          "quota",
           "audit",
           "idempotency"
         ],
@@ -180,25 +178,7 @@
           "module-prefix:next"
         ]
       },
-      "remediation": "Keep the validator on contracts, domain, and its profile; custody proof stays pure and offline."
-    },
-    {
-      "id": "custody-artifacts-are-parsed",
-      "title": "Custody artifacts are strictly parsed before persistence",
-      "level": "error",
-      "check": {
-        "kind": "require-boundary-parse",
-        "files": [
-          "packages/persistence/src/policy-custody.ts"
-        ],
-        "boundaryCalls": [
-          "createPolicyApprovalArtifact"
-        ],
-        "parserCalls": [
-          "PolicyApprovalSchema.parse"
-        ]
-      },
-      "remediation": "Pass only a value proven by PolicyApprovalSchema to the artifact repository."
+      "remediation": "Keep the validator on contracts, domain, and its profile."
     }
   ]
 }

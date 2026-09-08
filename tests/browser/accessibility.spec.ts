@@ -2,9 +2,12 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 const routes = Object.freeze({
-  "/access/recover": "Recover access",
-  "/access/reset": "Choose a new password",
-  "/access/sign-in": "Sign in",
+  "/": "KERNEL ZERO",
+  "/app": "Overview",
+  "/app/exceptions": "Exceptions",
+  "/app/policies": "Policies",
+  "/app/runs": "Verification runs",
+  "/app/settings/audit": "Audit history",
 } as const);
 
 for (const [path, heading] of Object.entries(routes)) {

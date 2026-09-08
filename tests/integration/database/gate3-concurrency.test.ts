@@ -2,117 +2,68 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { generateUuidV7 } from "@kernel-zero/domain";
 import {
+  approvePolicyRevision,
   createPersistenceClient,
-  createWorkspace,
-  QuotaExceededError,
+  createPolicyPack,
   runSerializableTransaction,
   type PersistenceClient,
 } from "@kernel-zero/persistence";
 
 import { isolatedTestDatabaseUrl } from "./environment";
 
+const correlationId = "0195f000-0000-7000-8000-000000000001";
+
+const document = {
+  apiVersion: "kernel-zero.dev/v1" as const, kind: "RepositoryPolicy",
+  metadata: { description: "Gate 3 database policy", name: "gate-three-policy", revision: 1 },
+  scope: { exclude: [], include: ["packages/**/*.ts"], languages: ["typescript"] },
+  rules: [{ check: { allowTypeOnly: false, files: ["packages/**"], kind: "require-import", module: "server-only" }, id: "server-only-rule", level: "error" as const, remediation: "Add the server-only marker.", title: "Server-only marker" }],
+};
+
 describe("Gate 3 isolated PostgreSQL concurrency", () => {
   let prisma: PersistenceClient;
-  let actorUserId: string;
   let workspaceId: string;
-  const correlationId = "0195f000-0000-7000-8000-000000000001";
+  let revisionId: string;
 
   beforeAll(async () => {
     prisma = createPersistenceClient(isolatedTestDatabaseUrl());
-    actorUserId = generateUuidV7();
-    await prisma.user.create({
-      data: {
-        displayName: "Gate 3 actor",
-        email: `gate3-${actorUserId}@example.test`,
-        id: actorUserId,
-        normalizedEmail: `gate3-${actorUserId}@example.test`,
-      },
-    });
-    const context = await createWorkspace(prisma, {
-      correlationId,
-      name: `Gate 3 ${actorUserId}`,
-      userId: actorUserId,
-    });
-    workspaceId = context.workspace.id;
-    await prisma.quotaCounter.update({
-      data: { reserved: 0, used: 2 },
-      where: {
-        workspaceId_quotaKey_periodKey: {
-          periodKey: "lifetime",
-          quotaKey: "active_policy_packs",
-          workspaceId,
-        },
-      },
-    });
+    workspaceId = generateUuidV7();
+    ({ revisionId } = await createPolicyPack(prisma, {
+      correlationId, description: "Gate 3 database policy", displayName: "Gate Three Policy", document, slug: "gate-three-policy", workspaceId,
+    }));
   });
 
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
-  it("allows exactly one of twenty final-unit operations and records only its audit", async () => {
-    const outcomes = await Promise.all(Array.from({ length: 20 }, async (_, index) => {
-      try {
-        await runSerializableTransaction(prisma, async (repositories) => {
-          const reservation = await repositories.quota.reserve({
-            amount: 1,
-            limit: 3,
-            periodKey: "lifetime",
-            quotaKey: "active_policy_packs",
-            workspaceId,
-          });
-          await repositories.quota.commit(workspaceId, reservation);
-          await repositories.audit.append({
-            actionCode: "test.final-unit",
-            actor: { kind: "user", userId: actorUserId },
-            correlationId,
-            description: "Final quota unit committed.",
-            metadata: { contender: index },
-            subjectId: `contender-${String(index)}`,
-            subjectType: "test",
-            workspaceOpaqueId: workspaceId,
-          });
-        });
-        return "committed" as const;
-      } catch (error) {
-        if (error instanceof QuotaExceededError) return "quota" as const;
-        throw error;
-      }
-    }));
-    expect(outcomes.filter((outcome) => outcome === "committed")).toHaveLength(1);
-    expect(outcomes.filter((outcome) => outcome === "quota")).toHaveLength(19);
-    await expect(prisma.quotaCounter.findUniqueOrThrow({
-      where: { workspaceId_quotaKey_periodKey: { periodKey: "lifetime", quotaKey: "active_policy_packs", workspaceId } },
-    })).resolves.toMatchObject({ reserved: 0, used: 3 });
-    await expect(prisma.auditRecord.count({ where: { actionCode: "test.final-unit", workspaceOpaqueId: workspaceId } })).resolves.toBe(1);
+  it("lets exactly one of twenty concurrent approvals freeze the draft and records only its audit", async () => {
+    const outcomes = await Promise.allSettled(Array.from({ length: 20 }, () =>
+      approvePolicyRevision(prisma, { correlationId, revisionId, workspaceId })));
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    await expect(prisma.policyRevision.findUniqueOrThrow({ where: { id: revisionId } })).resolves.toMatchObject({ state: "approved" });
+    await expect(prisma.auditRecord.count({ where: { actionCode: "policy.revision-approved", subjectId: revisionId, workspaceOpaqueId: workspaceId } })).resolves.toBe(1);
   });
 
-  it("rolls quota back when immutable audit persistence fails", async () => {
-    const before = await prisma.quotaCounter.findUniqueOrThrow({
-      where: { workspaceId_quotaKey_periodKey: { periodKey: "lifetime", quotaKey: "occupied_seats", workspaceId } },
-    });
+  it("rolls the business write back together with its audit record when the transaction fails", async () => {
+    const packId = generateUuidV7();
     await expect(runSerializableTransaction(prisma, async (repositories) => {
-      const reservation = await repositories.quota.reserve({
-        amount: 1,
-        limit: 3,
-        periodKey: "lifetime",
-        quotaKey: "occupied_seats",
-        workspaceId,
-      });
-      await repositories.quota.commit(workspaceId, reservation);
+      await repositories.transaction.policyPack.create({ data: {
+        description: "Must not persist.", displayName: "Rollback", id: packId, lifecycleState: "draft", slug: "rollback-pack", workspaceId,
+      } });
       await repositories.audit.append({
-        actionCode: "test.audit-failure",
-        actor: { kind: "user", userId: "0195f000-0000-7000-8000-999999999999" },
+        actionCode: "test.rollback",
+        actor: { kind: "operator" },
         correlationId,
-        description: "This insert must fail its user foreign key.",
+        description: "This record must roll back with the pack.",
         metadata: {},
-        subjectId: "failure",
+        subjectId: packId,
         subjectType: "test",
         workspaceOpaqueId: workspaceId,
       });
-    })).rejects.toBeDefined();
-    await expect(prisma.quotaCounter.findUniqueOrThrow({
-      where: { workspaceId_quotaKey_periodKey: { periodKey: "lifetime", quotaKey: "occupied_seats", workspaceId } },
-    })).resolves.toMatchObject({ reserved: before.reserved, used: before.used });
+      throw new Error("forced failure after the write");
+    })).rejects.toThrow("forced failure");
+    await expect(prisma.policyPack.count({ where: { id: packId } })).resolves.toBe(0);
+    await expect(prisma.auditRecord.count({ where: { actionCode: "test.rollback", workspaceOpaqueId: workspaceId } })).resolves.toBe(0);
   });
 });

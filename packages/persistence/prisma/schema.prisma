@@ -7,29 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum OnboardingState {
-  pending
-  complete
-}
-
-enum RoleQuarantineState {
-  valid
-  quarantined
-}
-
-enum InvitationStatus {
-  active
-  accepted
-  cancelled
-  expired
-}
-
-enum DeliveryState {
-  pending
-  sent
-  failed
-}
-
 enum PolicyPackState {
   draft
   active
@@ -65,181 +42,14 @@ enum AttestationState {
   attested
 }
 
-enum EntitlementState {
-  open
-  paid
-  grace
-}
-
-enum PaymentReceiptState {
-  received
-  applied
-  stale
-  quarantined
-  ignored
-}
-
 enum AuditActorKind {
-  user
+  operator
   system
 }
 
-model User {
-  id                  String               @id @db.Uuid
-  normalizedEmail     String               @unique @db.VarChar(320)
-  email               String               @db.VarChar(320)
-  displayName         String               @db.VarChar(120)
-  emailVerified       Boolean              @default(false)
-  imageUrl            String?              @db.VarChar(2048)
-  onboardingState     OnboardingState      @default(pending)
-  trialUsed           Boolean              @default(false)
-  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
-  accounts            Account[]
-  sessions            Session[]
-  memberships         Membership[]
-  createdInvitations  Invitation[]         @relation("InvitationCreator")
-  authoredRevisions   PolicyRevision[]     @relation("RevisionAuthor")
-  approvedRevisions   PolicyRevision[]     @relation("RevisionApprover")
-  requestedExceptions ExceptionRequest[]   @relation("ExceptionRequester")
-  decidedExceptions   ExceptionRequest[]   @relation("ExceptionDecider")
-  revokedExceptions   ExceptionRequest[]   @relation("ExceptionRevoker")
-  signingKeys         SigningKey[]
-  policyAuthorityKeys PolicyAuthorityKey[]
-  evidenceRuns        EvidenceRun[]
-  trialFingerprints   TrialFingerprint[]
-  auditRecords        AuditRecord[]
-  operatorGrant       SystemOperatorGrant?
-}
-
-model Account {
-  id                    String    @id @db.Uuid
-  accountId             String    @db.VarChar(255)
-  providerId            String    @db.VarChar(100)
-  userId                String    @db.Uuid
-  accessToken           String?   @db.Text
-  refreshToken          String?   @db.Text
-  idToken               String?   @db.Text
-  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
-  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
-  scope                 String?   @db.Text
-  password              String?   @db.Text
-  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([providerId, accountId], map: "account_provider_account_key")
-  @@index([userId], map: "account_user_idx")
-}
-
-model Session {
-  id                  String   @id @db.Uuid
-  token               String   @unique @db.VarChar(255)
-  userId              String   @db.Uuid
-  selectedWorkspaceId String?  @db.Uuid
-  expiresAt           DateTime @db.Timestamptz(3)
-  ipAddress           String?  @db.VarChar(128)
-  userAgent           String?  @db.VarChar(1024)
-  createdAt           DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, expiresAt], map: "session_user_expiry_idx")
-}
-
-model Verification {
-  id         String   @id @db.Uuid
-  identifier String   @db.VarChar(320)
-  value      String   @db.Text
-  expiresAt  DateTime @db.Timestamptz(3)
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
-
-  @@index([identifier, expiresAt], map: "verification_identifier_expiry_idx")
-}
-
-model Workspace {
-  id                   String                   @id @db.Uuid
-  slug                 String                   @unique @db.VarChar(48)
-  name                 String                   @db.VarChar(120)
-  logoUrl              String?                  @db.VarChar(2048)
-  ownerMembershipId    String                   @unique @db.Uuid
-  stripeCustomerId     String?                  @unique @db.VarChar(255)
-  createdAt            DateTime                 @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime                 @updatedAt @db.Timestamptz(3)
-  ownerMembership      Membership               @relation("WorkspaceOwner", fields: [ownerMembershipId], references: [id], onDelete: Restrict)
-  memberships          Membership[]             @relation("WorkspaceMemberships")
-  roleProfiles         RoleProfile[]
-  invitations          Invitation[]
-  policyPacks          PolicyPack[]
-  exceptionRequests    ExceptionRequest[]
-  signingKeys          SigningKey[]
-  policyAuthorityKeys  PolicyAuthorityKey[]
-  policyApprovals      PolicyApprovalArtifact[]
-  evidenceRuns         EvidenceRun[]
-  quotaCounters        QuotaCounter[]
-  subscription         SubscriptionProjection?
-  paymentEventReceipts PaymentEventReceipt[]
-}
-
-model Membership {
-  id             String       @id @db.Uuid
-  workspaceId    String       @db.Uuid
-  userId         String       @db.Uuid
-  roleProfileId  String?      @db.Uuid
-  isOwner        Boolean      @default(false)
-  joinedAt       DateTime     @default(now()) @db.Timestamptz(3)
-  workspace      Workspace    @relation("WorkspaceMemberships", fields: [workspaceId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Restrict)
-  roleProfile    RoleProfile? @relation(fields: [roleProfileId], references: [id], onDelete: Restrict)
-  ownedWorkspace Workspace?   @relation("WorkspaceOwner")
-
-  @@unique([workspaceId, userId], map: "membership_workspace_user_key")
-  @@unique([workspaceId, id], map: "membership_workspace_id_key")
-  @@index([userId, joinedAt], map: "membership_user_joined_idx")
-  @@index([workspaceId, roleProfileId], map: "membership_workspace_role_idx")
-}
-
-model RoleProfile {
-  id                 String              @id @db.Uuid
-  workspaceId        String              @db.Uuid
-  normalizedLabel    String              @db.VarChar(80)
-  displayLabel       String              @db.VarChar(80)
-  schemaVersion      Int                 @default(1)
-  capabilityDocument Json
-  quarantineState    RoleQuarantineState @default(valid)
-  builtIn            Boolean             @default(false)
-  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
-  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  memberships        Membership[]
-  invitations        Invitation[]
-
-  @@unique([workspaceId, normalizedLabel], map: "role_profile_workspace_label_key")
-  @@unique([workspaceId, id], map: "role_profile_workspace_id_key")
-}
-
-model Invitation {
-  id              String           @id @db.Uuid
-  workspaceId     String           @db.Uuid
-  normalizedEmail String           @db.VarChar(320)
-  displayEmail    String           @db.VarChar(320)
-  roleProfileId   String           @db.Uuid
-  creatorId       String           @db.Uuid
-  tokenHash       String           @unique @db.Char(64)
-  status          InvitationStatus @default(active)
-  expiresAt       DateTime         @db.Timestamptz(3)
-  deliveryState   DeliveryState    @default(pending)
-  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
-  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  roleProfile     RoleProfile      @relation(fields: [roleProfileId], references: [id], onDelete: Restrict)
-  creator         User             @relation("InvitationCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-
-  @@index([workspaceId, status, createdAt], map: "invitation_workspace_status_idx")
-  @@index([normalizedEmail, status], map: "invitation_email_status_idx")
-}
-
+/// `workspaceId` on every tenant row is the configured deployment identifier
+/// (`KERNEL_ZERO_WORKSPACE_ID`); it scopes every selector and is part of the
+/// evidence contract, but there is no workspace table behind it.
 model PolicyPack {
   id               String           @id @db.Uuid
   workspaceId      String           @db.Uuid
@@ -250,7 +60,6 @@ model PolicyPack {
   activeRevisionId String?          @unique @db.Uuid
   createdAt        DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
-  workspace        Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   revisions        PolicyRevision[] @relation("PackRevisions")
   activeRevision   PolicyRevision?  @relation("ActivePolicyRevision", fields: [activeRevisionId], references: [id], onDelete: Restrict)
 
@@ -260,22 +69,17 @@ model PolicyPack {
 }
 
 model PolicyRevision {
-  id                String                   @id @db.Uuid
-  workspaceId       String                   @db.Uuid
-  packId            String                   @db.Uuid
-  revision          Int
-  authorId          String                   @db.Uuid
-  canonicalJson     String                   @db.Text
-  digest            String?                  @db.Char(71)
-  state             PolicyRevisionState      @default(draft)
-  approverId        String?                  @db.Uuid
-  approvedAt        DateTime?                @db.Timestamptz(3)
-  createdAt         DateTime                 @default(now()) @db.Timestamptz(3)
-  pack              PolicyPack               @relation("PackRevisions", fields: [packId], references: [id], onDelete: Cascade)
-  activeForPack     PolicyPack?              @relation("ActivePolicyRevision")
-  author            User                     @relation("RevisionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  approver          User?                    @relation("RevisionApprover", fields: [approverId], references: [id], onDelete: Restrict)
-  approvalArtifacts PolicyApprovalArtifact[]
+  id            String              @id @db.Uuid
+  workspaceId   String              @db.Uuid
+  packId        String              @db.Uuid
+  revision      Int
+  canonicalJson String              @db.Text
+  digest        String?             @db.Char(71)
+  state         PolicyRevisionState @default(draft)
+  approvedAt    DateTime?           @db.Timestamptz(3)
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+  pack          PolicyPack          @relation("PackRevisions", fields: [packId], references: [id], onDelete: Cascade)
+  activeForPack PolicyPack?         @relation("ActivePolicyRevision")
 
   @@unique([packId, revision], map: "policy_revision_pack_revision_key")
   @@unique([workspaceId, digest], map: "policy_revision_workspace_digest_key")
@@ -291,21 +95,14 @@ model ExceptionRequest {
   findingFingerprint String                 @db.Char(71)
   rationale          String                 @db.VarChar(2000)
   issueUrl           String?                @db.VarChar(2048)
-  requesterId        String                 @db.Uuid
   decisionState      ExceptionDecisionState @default(pending)
-  deciderId          String?                @db.Uuid
   decisionNote       String?                @db.VarChar(2000)
   validUntil         DateTime               @db.Timestamptz(3)
   decidedAt          DateTime?              @db.Timestamptz(3)
   revokedAt          DateTime?              @db.Timestamptz(3)
-  revokedById        String?                @db.Uuid
   revocationReason   String?                @db.VarChar(1000)
   createdAt          DateTime               @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime               @updatedAt @db.Timestamptz(3)
-  workspace          Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  requester          User                   @relation("ExceptionRequester", fields: [requesterId], references: [id], onDelete: Restrict)
-  decider            User?                  @relation("ExceptionDecider", fields: [deciderId], references: [id], onDelete: Restrict)
-  revokedBy          User?                  @relation("ExceptionRevoker", fields: [revokedById], references: [id], onDelete: Restrict)
   findings           Finding[]
 
   @@unique([workspaceId, id], map: "exception_workspace_id_key")
@@ -320,56 +117,11 @@ model SigningKey {
   publicKey   String    @db.Text
   label       String    @db.VarChar(120)
   active      Boolean   @default(true)
-  creatorId   String    @db.Uuid
   createdAt   DateTime  @default(now()) @db.Timestamptz(3)
   revokedAt   DateTime? @db.Timestamptz(3)
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  creator     User      @relation(fields: [creatorId], references: [id], onDelete: Restrict)
 
   @@unique([workspaceId, keyId], map: "signing_key_workspace_key_key")
   @@index([workspaceId, active], map: "signing_key_workspace_active_idx")
-}
-
-/// Workspace policy-authority public keys: a trust domain separate from evidence SigningKey.
-/// Only public material and the authority timeline are stored; there is no private key column.
-model PolicyAuthorityKey {
-  id          String                   @id @db.Uuid
-  workspaceId String                   @db.Uuid
-  keyId       String                   @db.VarChar(120)
-  publicKeyX  String                   @db.Char(43)
-  label       String                   @db.VarChar(120)
-  validFrom   DateTime                 @db.Timestamptz(3)
-  validUntil  DateTime?                @db.Timestamptz(3)
-  revokedFrom DateTime?                @db.Timestamptz(3)
-  creatorId   String                   @db.Uuid
-  createdAt   DateTime                 @default(now()) @db.Timestamptz(3)
-  workspace   Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  creator     User                     @relation(fields: [creatorId], references: [id], onDelete: Restrict)
-  approvals   PolicyApprovalArtifact[]
-
-  @@unique([workspaceId, keyId], map: "policy_authority_key_workspace_key_key")
-  @@unique([workspaceId, id], map: "policy_authority_key_workspace_id_key")
-  @@index([workspaceId, validFrom], map: "policy_authority_key_workspace_valid_idx")
-}
-
-/// Immutable signed PolicyApproval artifacts, one per workspace revision.
-model PolicyApprovalArtifact {
-  id             String             @id @db.Uuid
-  workspaceId    String             @db.Uuid
-  revisionId     String             @db.Uuid
-  authorityKeyId String             @db.Uuid
-  policyDigest   String             @db.Char(71)
-  digest         String             @db.Char(71)
-  approvedAt     DateTime           @db.Timestamptz(3)
-  canonicalJson  String             @db.Text
-  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
-  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  revision       PolicyRevision     @relation(fields: [revisionId], references: [id], onDelete: Cascade)
-  authorityKey   PolicyAuthorityKey @relation(fields: [workspaceId, authorityKeyId], references: [workspaceId, id], onDelete: Restrict, map: "policy_approval_artifact_workspace_key_fkey")
-
-  @@unique([workspaceId, revisionId], map: "policy_approval_artifact_workspace_revision_key")
-  @@unique([workspaceId, id], map: "policy_approval_artifact_workspace_id_key")
-  @@index([workspaceId, approvedAt], map: "policy_approval_artifact_workspace_approved_idx")
 }
 
 model EvidenceRun {
@@ -393,11 +145,8 @@ model EvidenceRun {
   signatureValue        String?          @db.Text
   exceptionBundleDigest String?          @db.Char(71)
   attestationState      AttestationState @default(recorded)
-  submitterId           String           @db.Uuid
   correlationId         String           @db.Uuid
   createdAt             DateTime         @default(now()) @db.Timestamptz(3)
-  workspace             Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  submitter             User             @relation(fields: [submitterId], references: [id], onDelete: Restrict)
   findings              Finding[]
 
   @@unique([workspaceId, runId], map: "evidence_run_workspace_run_key")
@@ -406,7 +155,6 @@ model EvidenceRun {
   @@index([workspaceId, policyDigest, status], map: "evidence_run_policy_status_idx")
   @@index([workspaceId, repositoryLabel, generatedAt, id], map: "evidence_run_repo_generated_idx")
   @@index([workspaceId, status, attestationState, generatedAt, id], map: "evidence_run_result_attestation_idx")
-  @@index([workspaceId, submitterId, generatedAt, id], map: "evidence_run_submitter_generated_idx")
 }
 
 model Finding {
@@ -438,83 +186,10 @@ model Finding {
   @@index([workspaceId, exceptionRequestId, createdAt, id], map: "finding_workspace_exception_idx")
 }
 
-model QuotaCounter {
-  id          String    @id @db.Uuid
-  workspaceId String    @db.Uuid
-  quotaKey    String    @db.VarChar(80)
-  periodKey   String    @db.VarChar(80)
-  used        Int       @default(0)
-  reserved    Int       @default(0)
-  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@unique([workspaceId, quotaKey, periodKey], map: "quota_counter_scope_key")
-}
-
-model SubscriptionProjection {
-  id                    String           @id @db.Uuid
-  workspaceId           String           @unique @db.Uuid
-  provider              String           @default("stripe") @db.VarChar(40)
-  customerId            String?          @db.VarChar(255)
-  subscriptionId        String?          @unique @db.VarChar(255)
-  priceId               String?          @db.VarChar(255)
-  plan                  String           @db.VarChar(40)
-  providerStatus        String           @db.VarChar(80)
-  entitlementState      EntitlementState @default(open)
-  currentPeriodStart    DateTime?        @db.Timestamptz(3)
-  currentPeriodEnd      DateTime?        @db.Timestamptz(3)
-  cancelAtPeriodEnd     Boolean          @default(false)
-  graceExpiresAt        DateTime?        @db.Timestamptz(3)
-  lastProviderCreatedAt DateTime?        @db.Timestamptz(3)
-  lastProviderEventId   String?          @db.VarChar(255)
-  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime         @updatedAt @db.Timestamptz(3)
-  workspace             Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([provider, customerId], map: "subscription_provider_customer_idx")
-}
-
-model PaymentEventReceipt {
-  id                String              @id @db.Uuid
-  provider          String              @db.VarChar(40)
-  eventId           String              @db.VarChar(255)
-  providerCreatedAt DateTime            @db.Timestamptz(3)
-  payloadDigest     String              @db.Char(71)
-  eventType         String              @db.VarChar(120)
-  workspaceId       String?             @db.Uuid
-  replayFields      Json
-  state             PaymentReceiptState @default(received)
-  quarantineReason  String?             @db.VarChar(500)
-  retryCount        Int                 @default(0)
-  projectionResult  String?             @db.VarChar(500)
-  correlationId     String              @db.Uuid
-  createdAt         DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
-  workspace         Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
-
-  @@unique([provider, eventId], map: "payment_event_provider_event_key")
-  @@index([state, providerCreatedAt], map: "payment_event_state_created_idx")
-  @@index([workspaceId, providerCreatedAt], map: "payment_event_workspace_created_idx")
-}
-
-model TrialFingerprint {
-  id              String   @id @db.Uuid
-  userId          String   @db.Uuid
-  fingerprintHash String   @db.Char(71)
-  used            Boolean  @default(false)
-  createdAt       DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, fingerprintHash], map: "trial_fingerprint_user_hash_key")
-  @@index([fingerprintHash], map: "trial_fingerprint_hash_idx")
-}
-
 model AuditRecord {
   id                String         @id @db.Uuid
   workspaceOpaqueId String         @db.Uuid
   actorKind         AuditActorKind
-  actorUserId       String?        @db.Uuid
   systemActorRef    String?        @db.VarChar(120)
   actionCode        String         @db.VarChar(120)
   subjectType       String         @db.VarChar(120)
@@ -525,19 +200,8 @@ model AuditRecord {
   clientAddressHint String?        @db.VarChar(128)
   userAgentHint     String?        @db.VarChar(1024)
   createdAt         DateTime       @default(now()) @db.Timestamptz(3)
-  actorUser         User?          @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
 
   @@index([workspaceOpaqueId, createdAt], map: "audit_workspace_created_idx")
-  @@index([actorUserId, createdAt], map: "audit_actor_created_idx")
   @@index([actionCode, createdAt], map: "audit_action_created_idx")
   @@index([subjectType, subjectId, createdAt], map: "audit_subject_created_idx")
-}
-
-model SystemOperatorGrant {
-  id        String    @id @db.Uuid
-  userId    String    @unique @db.Uuid
-  source    String    @db.VarChar(40)
-  createdAt DateTime  @default(now()) @db.Timestamptz(3)
-  revokedAt DateTime? @db.Timestamptz(3)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

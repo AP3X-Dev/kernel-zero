@@ -8,7 +8,7 @@ import { generateUuidV7, isSha256Digest, type Sha256Digest } from "@kernel-zero/
 import { createAuditRepository } from "./audit";
 import type { PersistenceClient } from "./client";
 
-type SigningActorInput = Readonly<{ actorUserId: string; correlationId: string; workspaceId: string }>;
+type SigningActorInput = Readonly<{ correlationId: string; workspaceId: string }>;
 
 export async function registerSigningKey(client: PersistenceClient, input: SigningActorInput & Readonly<{
   keyId: string; label: string; publicKey: string;
@@ -18,7 +18,7 @@ export async function registerSigningKey(client: PersistenceClient, input: Signi
   const publicKey = normalizeEd25519PublicKey(input.publicKey);
   return client.$transaction(async (tx) => {
     const created = await tx.signingKey.create({ data: {
-      active: true, creatorId: input.actorUserId, id: generateUuidV7(), keyId: input.keyId.trim(),
+      active: true, id: generateUuidV7(), keyId: input.keyId.trim(),
       label: input.label.trim(), publicKey, workspaceId: input.workspaceId,
     } });
     await appendAudit(tx, input, "signing-key.registered", input.keyId, { keyId: input.keyId });
@@ -81,7 +81,7 @@ export function normalizeEd25519PublicKey(value: string): string {
 }
 
 async function appendAudit(tx: Parameters<typeof createAuditRepository>[0], input: SigningActorInput, actionCode: string, subjectId: string, metadata: Record<string, string>): Promise<void> {
-  await createAuditRepository(tx).append({ actionCode, actor: { kind: "user", userId: input.actorUserId }, correlationId: input.correlationId, description: actionCode.replaceAll(".", " "), metadata, subjectId, subjectType: "signing-key", workspaceOpaqueId: input.workspaceId });
+  await createAuditRepository(tx).append({ actionCode, actor: { kind: "operator" }, correlationId: input.correlationId, description: actionCode.replaceAll(".", " "), metadata, subjectId, subjectType: "signing-key", workspaceOpaqueId: input.workspaceId });
 }
 
 function failure(code: string, reason: string): Error { return new Error(`${code}:${reason}`); }
