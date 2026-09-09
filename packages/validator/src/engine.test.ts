@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
 import { describe, expect, it } from "vitest";
 
-import { createRepositoryProgram, evaluatePolicyChecks } from "./engine";
+import { RepositoryProgramError, createRepositoryProgram, evaluatePolicyChecks } from "./engine";
 
 const fixtureRoot = fileURLToPath(new URL("../fixtures/checks/", import.meta.url));
 const COMPILER_TEST_TIMEOUT_MS = 30_000;
@@ -85,6 +85,18 @@ describe("validator compiler and parse-failure model", { timeout: COMPILER_TEST_
     }), repository);
 
     expect(findings).toEqual([]);
+  });
+});
+
+describe("validator layer guard", { timeout: COMPILER_TEST_TIMEOUT_MS }, () => {
+  it("refuses a policy whose rule file lists still hold a layer reference", () => {
+    expect(() => evaluate({
+      id: "unresolved-layer",
+      title: "Unresolved layer reference",
+      level: "error",
+      check: { kind: "require-import", files: ["layer:x"], module: "server-only", allowTypeOnly: false },
+      remediation: "Resolve layers before evaluation.",
+    }, ["imports/required-value.ts"])).toThrow(new RepositoryProgramError("Policy layers must be resolved before evaluation."));
   });
 });
 

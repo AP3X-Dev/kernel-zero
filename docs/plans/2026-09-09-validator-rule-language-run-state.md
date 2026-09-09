@@ -6,15 +6,15 @@
 - **Branch:** feat/validator-rule-language (off main at 618b4cc)
 - **MemBerry:** reachable, no entries for this project yet; decisions stored under tag `project:kernel-zero`; the project-level bootstrap (`memberry-setup`, which edits CLAUDE.md) was skipped to keep the run inside PRP scope
 - **Current phase:** 3-implement
-- **In-flight:** step 1 (named layers), implementer dispatched; tasks 1.1-1.6
-- **Next action:** Phase 3 step 1 — implementer returns, run kz-checker, commit; then step 2
+- **In-flight:** step 2 (argument prover, require-call-argument), implementer dispatched; tasks 2.1-2.6
+- **Next action:** Phase 3 step 2 — implementer returns, run kz-checker, commit; then step 3
 
 ## Phase Gates
 | Phase | Gate | Result | Evidence (command + exit / artifact path) |
 |-------|------|--------|-------------------------------------------|
 | 1-design | spec exists + verifier PASS | PASS | docs/plans/2026-09-09-validator-rule-language-spec.md revision 4; verifier PASS after three rejections (see advisor log verdicts 1-4) |
 | 2-plan | plan exists, every task names files + runnable check, verifier PASS | PASS | docs/plans/2026-09-09-validator-rule-language-plan.md revision 2; verifier PASS after one rejection; baseline measured: verify exit 0, 264/45 unit, 7/3 integration, self-policy 91 files digest sha256:435c3f70…9ed3bb8 |
-| 3-implement | `npm run verify` exit 0 with counts; bite proofs; benchmark | pending | |
+| 3-implement | `npm run verify` exit 0 with counts; bite proofs; benchmark | in progress | step 1 layers: verify exit 0, unit 287/46, integration 7/3, self-policy pass 92 files, digest sha256:3cf09d734a23a4470eb4bf3a238ec4a9782146df73c9cc3cb10be690a1bcc824 identical twice, golden diff empty, kernel diff empty, bite proof exit 1 on a transport probe, kz-checker PASS, ADR docs/adr/2026-09-09-policy-layers.md |
 | 4-branch | PR URL recorded | pending | |
 | 5-optimize | optimization loop termination | pending | |
 

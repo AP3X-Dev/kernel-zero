@@ -59,6 +59,10 @@ describe("validator golden baseline", { timeout: 60_000 }, () => {
     delete result.durationMs;
     await expectGolden("evidence.json", { ...run.evidence, result });
     expect(run.outcome).toBe("error");
+    // Pins the scanned file set: new fixtures live under fixtures/kinds/, outside the golden include.
+    const pinned = JSON.parse(await readFile(path.join(goldenDir, "evidence.json"), "utf8")) as unknown;
+    expect(run.evidence.result.filesScanned).toBe(12);
+    expect(pinned).toMatchObject({ result: { filesScanned: 12 }, subject: { manifestDigest: run.evidence.subject.manifestDigest } });
   });
 
   it("matches an exception grant only by exact rule id and frozen fingerprint", async () => {

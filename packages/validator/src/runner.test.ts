@@ -13,7 +13,7 @@ import { runValidation } from "./runner";
 const WORKSPACE = "0195f000-0000-7000-8000-000000000002";
 const VALIDATOR_TEST_TIMEOUT_MS = 30_000;
 
-async function fixture(source: string) {
+async function fixture(source: string, policyPatch: Record<string, unknown> = {}) {
   const root = await mkdtemp(path.join(tmpdir(), "kernel-zero-runner-"));
   await mkdir(path.join(root, "src"));
   await writeFile(path.join(root, "src", "entry.ts"), source, "utf8");
@@ -26,6 +26,7 @@ async function fixture(source: string) {
       id: "no-raw-prisma", level: "error", remediation: "Use the repository boundary.", title: "No raw Prisma",
     }],
     scope: { exclude: [], include: ["src/**/*.ts"], languages: ["typescript"] },
+    ...policyPatch,
   };
   const policyPath = path.join(root, "policy.json");
   const out = path.join(root, "evidence.json");
@@ -65,6 +66,29 @@ describe("validator runner", { timeout: VALIDATOR_TEST_TIMEOUT_MS }, () => {
     expect(first.evidence.integrity.digest).toBe(second.evidence.integrity.digest);
     expect(first.evidence.subject.manifestDigest).toBe(second.evidence.subject.manifestDigest);
     expect(JSON.parse(await readFile(paths.out, "utf8")) as unknown).toEqual(second.evidence);
+  });
+
+  it("resolves layer references after the digest and finds what the expanded twin finds", async () => {
+    const source = 'import { PrismaClient } from "@prisma/client";\nexport const value = PrismaClient;\n';
+    const runtime = { generatedAt: new Date("2026-08-31T12:00:00.000Z"), runId: "0195f000-0000-7000-8000-000000000004" };
+    const expanded = await runValidation({ command: "validate", ...(await fixture(source)), workspace: WORKSPACE }, runtime);
+    const layered = await runValidation({ command: "validate", ...(await fixture(source, {
+      layers: { source: ["src/**/*.ts"] },
+      rules: [{
+        check: { deny: ["module:@prisma/client"], from: ["layer:source"], kind: "forbid-import-edge" },
+        id: "no-raw-prisma", level: "error", remediation: "Use the repository boundary.", title: "No raw Prisma",
+      }],
+    })), workspace: WORKSPACE }, runtime);
+
+    const observable = (finding: (typeof expanded.evidence.findings)[number]) => ({
+      level: finding.level, location: finding.location, messageCode: finding.messageCode, path: finding.path, ruleId: finding.ruleId, subject: finding.subject,
+    });
+    expect(layered.outcome).toBe("violations");
+    expect(layered.evidence.findings).toHaveLength(1);
+    expect(layered.evidence.findings.map(observable)).toEqual(expanded.evidence.findings.map(observable));
+    // The digest covers the parsed document with its references, so the two documents differ and the returned policy is unexpanded.
+    expect(layered.evidence.policy.digest).not.toBe(expanded.evidence.policy.digest);
+    expect(layered.policy.rules[0]?.check).toMatchObject({ from: ["layer:source"] });
   });
 
   it("returns pass for a conforming repository and error for a claimed parse failure", async () => {

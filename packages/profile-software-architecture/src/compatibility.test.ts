@@ -98,6 +98,20 @@ describe("evidence rule compatibility", () => {
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_PROOF_FAILED", "property:src/domain/job.ts#Task.status"))).toBe("rule_subject_mismatch");
   });
 
+  it("resolves layer references before matching so a layered rule accepts its finding", () => {
+    const layered = RepositoryPolicySchema.parse({
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "RepositoryPolicy",
+      layers: { source: ["src/**/*.ts"] },
+      metadata: { description: "Policy", name: "policy", revision: 1 },
+      rules: [{ check: { deny: ["module:blocked-package"], from: ["layer:source"], kind: "forbid-import-edge" }, id: "test-rule", level: "error", remediation: "Fix it.", title: "Test" }],
+      scope: { exclude: [], include: ["**/*.ts"], languages: ["typescript"] },
+    });
+    expect(findingCompatibilityReason(layered, finding("DENIED_IMPORT", "blocked-package"))).toBeNull();
+    expect(findingCompatibilityReason(layered, finding("DENIED_IMPORT", "other-package"))).toBe("rule_subject_mismatch");
+    expect(layered.rules[0]?.check).toMatchObject({ from: ["layer:source"] });
+  });
+
   it("allows parse failures only for error-level resolved rules", () => {
     const firstCase = checkCases[0];
     if (firstCase === undefined) throw new Error("Test cases are required.");

@@ -3,14 +3,42 @@
   "type": "object",
   "properties": {
     "apiVersion": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "kind": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "metadata": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "scope": {
+      "$ref": "#/$defs/__schema3"
+    },
+    "layers": {
+      "$ref": "#/$defs/__schema8"
+    },
+    "rules": {
+      "$ref": "#/$defs/__schema12"
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "scope",
+    "rules"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
       "type": "string",
       "const": "kernel-zero.dev/v1"
     },
-    "kind": {
+    "__schema1": {
       "type": "string",
       "const": "RepositoryPolicy"
     },
-    "metadata": {
+    "__schema2": {
       "type": "object",
       "properties": {
         "name": {
@@ -37,7 +65,7 @@
       ],
       "additionalProperties": false
     },
-    "scope": {
+    "__schema3": {
       "type": "object",
       "properties": {
         "languages": {
@@ -45,14 +73,14 @@
           "maxItems": 2,
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema0"
+            "$ref": "#/$defs/__schema4"
           }
         },
         "include": {
-          "$ref": "#/$defs/__schema1"
+          "$ref": "#/$defs/__schema5"
         },
         "exclude": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema7"
         }
       },
       "required": [
@@ -62,53 +90,69 @@
       ],
       "additionalProperties": false
     },
-    "rules": {
-      "minItems": 1,
-      "maxItems": 500,
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/__schema4"
-      }
-    }
-  },
-  "required": [
-    "apiVersion",
-    "kind",
-    "metadata",
-    "scope",
-    "rules"
-  ],
-  "additionalProperties": false,
-  "$defs": {
-    "__schema0": {
+    "__schema4": {
       "type": "string",
       "enum": [
         "typescript",
         "tsx"
       ]
     },
-    "__schema1": {
+    "__schema5": {
       "minItems": 1,
       "maxItems": 100,
       "type": "array",
       "items": {
-        "$ref": "#/$defs/__schema2"
+        "$ref": "#/$defs/__schema6"
       }
     },
-    "__schema2": {
+    "__schema6": {
       "type": "string",
       "minLength": 1,
       "maxLength": 500
     },
-    "__schema3": {
+    "__schema7": {
       "minItems": 0,
       "maxItems": 100,
       "type": "array",
       "items": {
-        "$ref": "#/$defs/__schema2"
+        "$ref": "#/$defs/__schema6"
       }
     },
-    "__schema4": {
+    "__schema8": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema9"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema10"
+      }
+    },
+    "__schema9": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 40,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "__schema10": {
+      "minItems": 1,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema11"
+      }
+    },
+    "__schema11": {
+      "$ref": "#/$defs/__schema6"
+    },
+    "__schema12": {
+      "minItems": 1,
+      "maxItems": 500,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema13"
+      }
+    },
+    "__schema13": {
       "type": "object",
       "properties": {
         "id": {
@@ -139,14 +183,14 @@
                   "const": "forbid-import-edge"
                 },
                 "from": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "deny": {
                   "minItems": 1,
                   "maxItems": 100,
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema5"
+                    "$ref": "#/$defs/__schema14"
                   }
                 }
               },
@@ -165,10 +209,10 @@
                   "const": "require-import"
                 },
                 "files": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "module": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema15"
                 },
                 "allowTypeOnly": {
                   "default": false,
@@ -190,10 +234,10 @@
                   "const": "restrict-call-site"
                 },
                 "callee": {
-                  "$ref": "#/$defs/__schema7"
+                  "$ref": "#/$defs/__schema16"
                 },
                 "allowFrom": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "requireResolution": {
                   "default": true,
@@ -215,13 +259,13 @@
                   "const": "require-export-keys"
                 },
                 "files": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "exportName": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema15"
                 },
                 "requiredKeys": {
-                  "$ref": "#/$defs/__schema7"
+                  "$ref": "#/$defs/__schema16"
                 }
               },
               "required": [
@@ -240,14 +284,14 @@
                   "const": "require-tenant-parameter"
                 },
                 "files": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "symbols": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema15"
                 },
                 "parameter": {
                   "default": "workspaceId",
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema15"
                 }
               },
               "required": [
@@ -265,13 +309,13 @@
                   "const": "require-boundary-parse"
                 },
                 "files": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "boundaryCalls": {
-                  "$ref": "#/$defs/__schema7"
+                  "$ref": "#/$defs/__schema16"
                 },
                 "parserCalls": {
-                  "$ref": "#/$defs/__schema7"
+                  "$ref": "#/$defs/__schema16"
                 }
               },
               "required": [
@@ -290,24 +334,24 @@
                   "const": "require-governed-operation"
                 },
                 "files": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "registryExport": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema15"
                 },
                 "requiredKeys": {
                   "minItems": 1,
                   "maxItems": 5,
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema8"
+                    "$ref": "#/$defs/__schema17"
                   }
                 },
                 "declarationCalls": {
                   "default": [
                     "defineGovernedAction"
                   ],
-                  "$ref": "#/$defs/__schema7"
+                  "$ref": "#/$defs/__schema16"
                 }
               },
               "required": [
@@ -326,13 +370,13 @@
                   "const": "require-context-parameter"
                 },
                 "files": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "symbols": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema15"
                 },
                 "parameter": {
-                  "$ref": "#/$defs/__schema6"
+                  "$ref": "#/$defs/__schema15"
                 },
                 "expectedType": {
                   "default": null,
@@ -370,10 +414,10 @@
                               "const": "export"
                             },
                             "file": {
-                              "$ref": "#/$defs/__schema9"
+                              "$ref": "#/$defs/__schema18"
                             },
                             "exportName": {
-                              "$ref": "#/$defs/__schema10"
+                              "$ref": "#/$defs/__schema19"
                             }
                           },
                           "required": [
@@ -407,23 +451,23 @@
                   "const": "require-closed-registry"
                 },
                 "registryFile": {
-                  "$ref": "#/$defs/__schema9"
+                  "$ref": "#/$defs/__schema18"
                 },
                 "registryExport": {
-                  "$ref": "#/$defs/__schema10"
+                  "$ref": "#/$defs/__schema19"
                 },
                 "declarationFiles": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "declarationCalls": {
-                  "$ref": "#/$defs/__schema7"
+                  "$ref": "#/$defs/__schema16"
                 },
                 "requiredKeys": {
                   "minItems": 0,
                   "maxItems": 100,
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema6"
+                    "$ref": "#/$defs/__schema15"
                   }
                 }
               },
@@ -445,16 +489,16 @@
                   "const": "restrict-property-write"
                 },
                 "files": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema5"
                 },
                 "targetType": {
                   "type": "object",
                   "properties": {
                     "file": {
-                      "$ref": "#/$defs/__schema9"
+                      "$ref": "#/$defs/__schema18"
                     },
                     "exportName": {
-                      "$ref": "#/$defs/__schema10"
+                      "$ref": "#/$defs/__schema19"
                     }
                   },
                   "required": [
@@ -464,10 +508,10 @@
                   "additionalProperties": false
                 },
                 "property": {
-                  "$ref": "#/$defs/__schema10"
+                  "$ref": "#/$defs/__schema19"
                 },
                 "allowFrom": {
-                  "$ref": "#/$defs/__schema3"
+                  "$ref": "#/$defs/__schema7"
                 }
               },
               "required": [
@@ -496,25 +540,25 @@
       ],
       "additionalProperties": false
     },
-    "__schema5": {
+    "__schema14": {
       "type": "string",
       "minLength": 6,
       "maxLength": 500
     },
-    "__schema6": {
+    "__schema15": {
       "type": "string",
       "minLength": 1,
       "maxLength": 500
     },
-    "__schema7": {
+    "__schema16": {
       "minItems": 1,
       "maxItems": 100,
       "type": "array",
       "items": {
-        "$ref": "#/$defs/__schema6"
+        "$ref": "#/$defs/__schema15"
       }
     },
-    "__schema8": {
+    "__schema17": {
       "type": "string",
       "enum": [
         "capability",
@@ -524,10 +568,10 @@
         "idempotency"
       ]
     },
-    "__schema9": {
-      "$ref": "#/$defs/__schema2"
+    "__schema18": {
+      "$ref": "#/$defs/__schema6"
     },
-    "__schema10": {
+    "__schema19": {
       "type": "string",
       "minLength": 1,
       "maxLength": 200,

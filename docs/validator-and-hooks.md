@@ -17,6 +17,30 @@ without touching the output. Production export requires an authenticated
 control-plane channel and approved signing-key custody; neither is inferred by
 the standalone validator.
 
+## Named layers
+
+`kernel-zero.policy.json` declares its architectural layers once under
+`layers` and references them from rule file lists (`from`, `files`,
+`allowFrom`, `declarationFiles`) as `layer:<name>`. `scope.include` and
+`scope.exclude` accept globs only. The repository self-policy uses six layers:
+
+```json
+"layers": {
+  "ui": ["apps/control/src/app/**/page.tsx", "apps/control/src/app/**/layout.tsx"],
+  "transport": ["apps/control/src/app/api/**/*.ts"],
+  "service": ["apps/control/src/server/**/*.ts"],
+  "persistence": ["packages/persistence/src/**/*.ts"],
+  "kernel": ["packages/domain/**/*.ts", "packages/contracts/**/*.ts", "packages/persistence/**/*.ts"],
+  "validator": ["packages/validator/**/*.ts"]
+}
+```
+
+and `transport-does-not-import-repositories` reads
+`"from": ["layer:transport"]`. References are expanded after the policy digest
+is computed and before evaluation, so subjects, fingerprints, and the digest
+of a layer-free policy are unchanged. An undeclared or malformed reference, or
+one placed in `scope`, is a policy contract failure (exit `2`).
+
 ## Agent-facing commands
 
 `kernel-zero explain --policy|--evidence <file>` renders one strictly parsed

@@ -8,6 +8,7 @@ import { RepositoryPolicySchema, repositoryPolicyJsonSchema, type RepositoryPoli
 export * from "./compatibility";
 export * from "./diff";
 export * from "./evidence";
+export * from "./layers";
 export * from "./policy";
 
 export const softwareArchitectureProfile: Profile<RepositoryPolicy, RepositoryEvidence> = Object.freeze({

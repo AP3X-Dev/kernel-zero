@@ -22,6 +22,29 @@
       "packages/persistence/src/client.ts"
     ]
   },
+  "layers": {
+    "ui": [
+      "apps/control/src/app/**/page.tsx",
+      "apps/control/src/app/**/layout.tsx"
+    ],
+    "transport": [
+      "apps/control/src/app/api/**/*.ts"
+    ],
+    "service": [
+      "apps/control/src/server/**/*.ts"
+    ],
+    "persistence": [
+      "packages/persistence/src/**/*.ts"
+    ],
+    "kernel": [
+      "packages/domain/**/*.ts",
+      "packages/contracts/**/*.ts",
+      "packages/persistence/**/*.ts"
+    ],
+    "validator": [
+      "packages/validator/**/*.ts"
+    ]
+  },
   "rules": [
     {
       "id": "server-modules-declare-boundary",
@@ -30,8 +53,8 @@
       "check": {
         "kind": "require-import",
         "files": [
-          "apps/control/src/server/**/*.ts",
-          "packages/persistence/src/**/*.ts"
+          "layer:service",
+          "layer:persistence"
         ],
         "module": "server-only",
         "allowTypeOnly": false
@@ -45,8 +68,7 @@
       "check": {
         "kind": "forbid-import-edge",
         "from": [
-          "apps/control/src/app/**/page.tsx",
-          "apps/control/src/app/**/layout.tsx"
+          "layer:ui"
         ],
         "deny": [
           "module:@kernel-zero/persistence",
@@ -62,7 +84,7 @@
       "check": {
         "kind": "forbid-import-edge",
         "from": [
-          "apps/control/src/app/api/**/*.ts"
+          "layer:transport"
         ],
         "deny": [
           "module:@kernel-zero/persistence",
@@ -150,9 +172,7 @@
       "check": {
         "kind": "forbid-import-edge",
         "from": [
-          "packages/domain/**/*.ts",
-          "packages/contracts/**/*.ts",
-          "packages/persistence/**/*.ts"
+          "layer:kernel"
         ],
         "deny": [
           "module:@kernel-zero/profiles",
@@ -169,7 +189,7 @@
       "check": {
         "kind": "forbid-import-edge",
         "from": [
-          "packages/validator/**/*.ts"
+          "layer:validator"
         ],
         "deny": [
           "module:@kernel-zero/persistence",

@@ -1,4 +1,4 @@
-import type { RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
+import { isLayerReference, ruleFileLists, type RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
 
 import { evaluateBoundaryParses } from "./checks/boundary";
 import { evaluateRestrictedCalls } from "./checks/calls";
@@ -18,12 +18,16 @@ import {
   type PolicyRule,
   type RawValidatorFinding,
 } from "./findings";
-import type { RepositoryProgram } from "./program";
+import { RepositoryProgramError, type RepositoryProgram } from "./program";
 
 export type { RawFindingLocation, RawFindingMessageCode, RawValidatorFinding } from "./findings";
 export { RepositoryProgramError, createRepositoryProgram, type CreateRepositoryProgramOptions, type RepositoryProgram } from "./program";
 
 export function evaluatePolicyChecks(policy: RepositoryPolicy, repository: RepositoryProgram): RawValidatorFinding[] {
+  // Programming-error guard, not a finding: the runner resolves layers after the digest and before this call.
+  if (policy.rules.some((rule) => ruleFileLists(rule.check).some(([, globs]) => globs.some(isLayerReference)))) {
+    throw new RepositoryProgramError("Policy layers must be resolved before evaluation.");
+  }
   const findings: RawValidatorFinding[] = [];
 
   for (const rule of policy.rules) {

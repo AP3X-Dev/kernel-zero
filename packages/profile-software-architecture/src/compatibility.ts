@@ -1,5 +1,6 @@
 import type { EvidenceFinding } from "@kernel-zero/contracts";
 
+import { resolvePolicyLayers } from "./layers";
 import type { RepositoryPolicy } from "./policy";
 
 const messageCodesByKind: Readonly<Record<RepositoryPolicy["rules"][number]["check"]["kind"], readonly string[]>> = Object.freeze({
@@ -15,7 +16,8 @@ const messageCodesByKind: Readonly<Record<RepositoryPolicy["rules"][number]["che
   "restrict-property-write": ["PROPERTY_WRITE_DENIED", "PROPERTY_WRITE_PROOF_FAILED"],
 });
 
-export function findingCompatibilityReason(policy: RepositoryPolicy, finding: EvidenceFinding): string | null {
+export function findingCompatibilityReason(unresolvedPolicy: RepositoryPolicy, finding: EvidenceFinding): string | null {
+  const policy = resolvePolicyLayers(unresolvedPolicy);
   const rule = policy.rules.find((candidate) => candidate.id === finding.ruleId);
   if (rule === undefined) return "rule_not_found";
   if (finding.level !== rule.level) return "rule_level_mismatch";

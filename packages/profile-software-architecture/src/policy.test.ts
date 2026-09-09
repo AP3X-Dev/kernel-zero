@@ -76,4 +76,53 @@ describe("RepositoryPolicy v1 contract", () => {
       expect(result.success, JSON.stringify(result.error)).toBe(true);
     }
   });
+
+  describe("layers", () => {
+    const extraLayers = (count: number) => Object.fromEntries(Array.from({ length: count }, (_, index) => [`layer-${String(index)}`, ["apps/**"]]));
+    const layeredRule = { ...validPolicy.rules[0], check: { kind: "forbid-import-edge", from: ["layer:ui", "packages/**"], deny: ["module:@prisma/client"] } };
+    const layered = {
+      ...validPolicy,
+      layers: { ui: ["apps/control/src/app/**/page.tsx"], service: ["apps/control/src/server/**/*.ts"] },
+      rules: [layeredRule],
+    };
+
+    it("accepts declared layers and keeps references unexpanded in the parsed document", () => {
+      expect(RepositoryPolicySchema.parse(layered)).toEqual(layered);
+    });
+
+    it("parses a policy without layers to the same object with no layers key", () => {
+      const parsed = RepositoryPolicySchema.parse(validPolicy);
+      expect(parsed).toEqual(validPolicy);
+      expect("layers" in parsed).toBe(false);
+    });
+
+    it.each([
+      ["malformed reference", { ...layered, rules: [{ ...layeredRule, check: { ...layeredRule.check, from: ["layer:UI_Layer"] } }] }, "Layer reference is not a slug: layer:UI_Layer"],
+      ["reference in scope include", { ...layered, scope: { ...layered.scope, include: ["layer:ui"] } }, "Layer reference is not allowed in scope: layer:ui"],
+      ["reference in scope exclude", { ...layered, scope: { ...layered.scope, exclude: ["layer:ui"] } }, "Layer reference is not allowed in scope: layer:ui"],
+      ["undeclared reference", { ...layered, rules: [{ ...layeredRule, check: { ...layeredRule.check, from: ["layer:ghost"] } }] }, "Layer is not declared: ghost (rule layers-no-ui-db, field from)"],
+      ["reference without a layers block", { ...validPolicy, rules: layered.rules }, "Layer is not declared: ui (rule layers-no-ui-db, field from)"],
+      ["undeclared allowFrom reference", { ...layered, rules: [{ ...layeredRule, check: { kind: "restrict-property-write", files: ["layer:ui"], targetType: { file: "src/job.ts", exportName: "Job" }, property: "status", allowFrom: ["layer:data"] } }] }, "Layer is not declared: data (rule layers-no-ui-db, field allowFrom)"],
+    ])("rejects a %s with the exact message", (_label, value, message) => {
+      const result = RepositoryPolicySchema.safeParse(value);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map((issue) => issue.message)).toEqual([message]);
+    });
+
+    it.each([
+      ["a non-slug layer name", { ...layered, layers: { ...layered.layers, "Bad Name": ["apps/**"] } }],
+      ["a one-character layer name", { ...layered, layers: { ...layered.layers, a: ["apps/**"] } }],
+      ["an empty layer", { ...layered, layers: { ...layered.layers, empty: [] } }],
+      ["a layer containing a reference", { ...layered, layers: { ...layered.layers, nested: ["layer:ui"] } }],
+      ["51 layers", { ...layered, layers: { ...layered.layers, ...extraLayers(49) } }],
+    ])("rejects %s", (_label, value) => {
+      expect(RepositoryPolicySchema.safeParse(value).success).toBe(false);
+    });
+
+    it("accepts 50 layers", () => {
+      const layers = { ...layered.layers, ...extraLayers(48) };
+      expect(Object.keys(layers)).toHaveLength(50);
+      expect(RepositoryPolicySchema.safeParse({ ...layered, layers }).success).toBe(true);
+    });
+  });
 });

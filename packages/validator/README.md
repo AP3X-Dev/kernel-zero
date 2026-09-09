@@ -35,6 +35,32 @@ protected operation. The JSON evidence at `--out` is authoritative; the command
 also prints one summary line and one deterministic line per finding (level,
 rule, path:line:column, code, subject) followed by the policy remediation.
 
+## Layers
+
+A policy may name architectural layers once and reference them from rule
+file lists with `layer:<name>`; `scope` stays glob-only. The validator expands
+each reference before evaluation, and the policy digest covers the document
+as written, so a policy without `layers` keeps its digest.
+
+```json
+{
+  "layers": {
+    "ui": ["src/app/**/page.tsx", "src/app/**/layout.tsx"],
+    "persistence": ["src/persistence/**/*.ts"]
+  },
+  "rules": [{
+    "id": "ui-does-not-import-persistence",
+    "title": "UI routes use application services",
+    "level": "error",
+    "check": { "kind": "forbid-import-edge", "from": ["layer:ui"], "deny": ["module:@prisma/client"] },
+    "remediation": "Move persistence access behind a server application service."
+  }]
+}
+```
+
+A reference to an undeclared layer, a non-slug name, or a reference inside
+`scope` fails policy parsing with exit `2`.
+
 ## Explain and init
 
 ```text

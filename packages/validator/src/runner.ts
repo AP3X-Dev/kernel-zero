@@ -17,6 +17,7 @@ import {
   RepositoryEvidenceSchema,
   RepositoryPolicySchema,
   findingMessage,
+  resolvePolicyLayers,
   type FindingMessageCode,
   type RepositoryEvidence,
   type RepositoryPolicy,
@@ -57,7 +58,7 @@ export async function runValidation(command: ResolvedValidateCommand, options: V
     root: command.root,
   });
   const repository = createRepositoryProgram({ rootPath: discovery.root, filePaths: discovery.files.map((file) => file.path) });
-  const rawFindings = evaluatePolicyChecks(policy, repository);
+  const rawFindings = evaluatePolicyChecks(resolvePolicyLayers(policy), repository);
   const grants = new Map((exceptionBundle?.grants ?? []).map((grant) => [`${grant.ruleId}\0${grant.fingerprint}`, grant.exceptionId]));
   const findings = sortFindings(rawFindings.map((finding): EvidenceFinding => {
     const messageCode = publicMessageCode(finding.messageCode);
