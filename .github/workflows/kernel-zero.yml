@@ -35,6 +35,8 @@ jobs:
         run: npm run validator:self
       - name: Validate workflow hygiene
         run: npm run validator:workflow
+      - name: Validate the Python profile fixture
+        run: npm run validator:python
       - name: Preserve deterministic evidence
         if: always()
         uses: actions/upload-artifact@v4
