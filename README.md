@@ -37,7 +37,11 @@ without creating separate products or control planes.
    single-operator console: there is no sign-in, and one configured workspace
    identifier scopes every stored row.
 4. **The gate** is CI. A local hook gives fast feedback; the protected branch
-   check is what actually blocks a merge.
+   check is what actually blocks a merge. This repository dogfoods that gate:
+   `main` accepts only pull requests whose `verify` job passed, with no bypass,
+   and the job itself fails if that requirement is ever removed. Verify it
+   without a token at
+   <https://api.github.com/repos/AP3X-Dev/kernel-zero/rules/branches/main>.
 
 ## Local start
 
