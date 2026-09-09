@@ -11,6 +11,8 @@ const PW = { allowFrom: ["src/dataplane/state/**"], files: ["src/**/*.ts"], kind
 
 const CA = { allowFrom: ["src/audit.ts"], argument: 0, callee: ["*.findFirst", "db.policy.*"], files: ["src/**/*.ts"], kind: "require-call-argument", requiredPath: "where.workspaceId" };
 
+const ST = { allowFrom: ["src/persistence/policies.ts"], argument: 0, callee: ["*.policyRevision.updateMany"], field: "data.state", kind: "restrict-state-transition", transitions: [{ from: "draft", to: "approved" }] };
+
 const checkCases: readonly Readonly<{
   check: Record<string, unknown>;
   code: FindingMessageCode;
@@ -37,6 +39,11 @@ const checkCases: readonly Readonly<{
   { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:db.policy.findMany:argument:0:where.workspaceId" },
   { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:db.policy.*:argument:0:where.workspaceId" },
   { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:*.findFirst:argument:0:where.workspaceId" },
+  { check: ST, code: "STATE_TRANSITION_DENIED", subject: "transition:state:tx.policyRevision.updateMany" },
+  { check: ST, code: "STATE_TRANSITION_DENIED", subject: "transition:state:draft->active" },
+  { check: ST, code: "STATE_TRANSITION_DENIED", subject: "transition:state:*->active" },
+  { check: ST, code: "STATE_TRANSITION_PROOF_FAILED", subject: "transition:state:tx.policyRevision.updateMany" },
+  { check: ST, code: "STATE_TRANSITION_PROOF_FAILED", subject: "transition:state:*.policyRevision.updateMany" },
 ];
 
 function policy(check: Record<string, unknown>) {
@@ -121,6 +128,18 @@ describe("evidence rule compatibility", () => {
       scope: { exclude: [], include: ["**/*.ts"], languages: ["typescript"] },
     });
     expect(findingCompatibilityReason(layered, finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:0:where.workspaceId"))).toBeNull();
+  });
+
+  it("rejects state-transition subjects with another leaf, a chain outside the callee globs, a malformed pair, or a pair on a proof failure", () => {
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:status:tx.policyRevision.updateMany"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:tx.policyPack.updateMany"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:draft->"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:draft->a->b"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:draft->*"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:in progress->done"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_PROOF_FAILED", "transition:state:draft->active"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("CALL_ARGUMENT_MISSING", "transition:state:draft->active"))).toBe("rule_code_mismatch");
+    expect(findingCompatibilityReason(policy({ ...ST, field: "state" }), finding("STATE_TRANSITION_DENIED", "transition:state:draft->active"))).toBeNull();
   });
 
   it("resolves layer references before matching so a layered rule accepts its finding", () => {

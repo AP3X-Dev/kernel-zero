@@ -67,6 +67,36 @@ Deleting one `workspaceId` from a selector fails the gate with
 selectors carry the tenant key inside the unique-key object, which the
 composite index already scopes.
 
+## Governed state transitions
+
+The self-policy rule `policy-revision-state-is-governed` uses
+`restrict-state-transition` to prove that `*.policyRevision.updateMany`
+writes `data.state` only from `packages/persistence/src/policies.ts`, and
+only as `draft->approved`, `approved->active`, or `active->superseded`, read
+from the literal `where.state` predicate and the literal `data.state` value.
+
+```json
+"check": {
+  "kind": "restrict-state-transition",
+  "callee": ["*.policyRevision.updateMany"],
+  "argument": 0,
+  "field": "data.state",
+  "allowFrom": ["packages/persistence/src/policies.ts"],
+  "transitions": [
+    { "from": "draft", "to": "approved" },
+    { "from": "approved", "to": "active" },
+    { "from": "active", "to": "superseded" }
+  ]
+}
+```
+
+A state write anywhere else fails the gate with `STATE_TRANSITION_DENIED`
+and the callee chain as subject; a write in `policies.ts` through an
+unlisted pair fails with the same code and subject `transition:state:<from>-><to>`;
+a write whose `where` carries no literal `state`, or whose `data` is a spread,
+fails with `STATE_TRANSITION_PROOF_FAILED`. Writes that touch other columns
+are ignored.
+
 ## Agent-facing commands
 
 `kernel-zero explain --policy|--evidence <file>` renders one strictly parsed

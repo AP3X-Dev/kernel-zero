@@ -87,6 +87,37 @@ spread or computed key on the path. Anything the validator cannot prove is
 }
 ```
 
+## Governed state transitions
+
+`restrict-state-transition` proves that a state field is written only from
+its allowed writer files and, when `transitions` are listed, only through a
+listed `from -> to` pair, read from the literal `where` predicate and the
+literal written value. A write outside `allowFrom` or through an unlisted
+pair is `STATE_TRANSITION_DENIED`; a write the validator cannot prove (a
+spread, a value built elsewhere, a predicate without the field) is
+`STATE_TRANSITION_PROOF_FAILED`. Calls that do not write the field are
+ignored.
+
+```json
+{
+  "id": "policy-revision-state-is-governed",
+  "title": "Policy revision state changes only through the governed lifecycle",
+  "level": "error",
+  "check": {
+    "kind": "restrict-state-transition",
+    "callee": ["*.policyRevision.updateMany"],
+    "field": "data.state",
+    "allowFrom": ["src/persistence/policies.ts"],
+    "transitions": [
+      { "from": "draft", "to": "approved" },
+      { "from": "approved", "to": "active" },
+      { "from": "active", "to": "superseded" }
+    ]
+  },
+  "remediation": "Change revision state only from policies.ts through a listed transition."
+}
+```
+
 ## Explain and init
 
 ```text

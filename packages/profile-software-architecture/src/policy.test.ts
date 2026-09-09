@@ -58,11 +58,21 @@ describe("RepositoryPolicy v1 contract", () => {
     ["call argument negative index", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: -1, requiredPath: "where" } }] }],
     ["call argument fractional index", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: 0.5, requiredPath: "where" } }] }],
     ["call argument unknown field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where", regex: ".*" } }] }],
+    ["state transition missing field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"] } }] }],
+    ["state transition glob in field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.*" } }] }],
+    ["state transition empty callee list", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: [], field: "data.state" } }] }],
+    ["state transition dotted from", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "a.b", to: "c" }] } }] }],
+    ["state transition wildcard to", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "*" }] } }] }],
+    ["state transition empty to", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "" }] } }] }],
+    ["state transition extra pair key", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "approved", via: "x" }] } }] }],
+    ["state transition duplicate pair", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "approved" }, { from: "draft", to: "approved" }] } }] }],
+    ["state transition index above nine", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", argument: 10 } }] }],
+    ["state transition unknown field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", files: ["src/**"] } }] }],
   ])("rejects %s", (_label, value) => {
     expect(RepositoryPolicySchema.safeParse(value).success).toBe(false);
   });
 
-  it("accepts all eleven closed check variants and rejects variant-only drift", () => {
+  it("accepts all twelve closed check variants and rejects variant-only drift", () => {
     const checks = [
       { kind: "forbid-import-edge", from: ["apps/**"], deny: ["module:x"] },
       { kind: "require-import", files: ["apps/**"], module: "server-only", allowTypeOnly: false },
@@ -79,6 +89,8 @@ describe("RepositoryPolicy v1 contract", () => {
       { kind: "restrict-property-write", files: ["src/**/*.ts"], targetType: { file: "src/domain/job.ts", exportName: "Job" }, property: "status", allowFrom: [] },
       { kind: "require-call-argument", files: ["packages/persistence/src/**/*.ts"], callee: ["*.findFirst", "*.findMany", "prisma.*.updateMany", "$db.count"], argument: 0, requiredPath: "where.workspaceId", allowFrom: ["packages/persistence/src/audit.ts"] },
       { kind: "require-call-argument", files: ["src/**"], callee: ["*"], requiredPath: "a.b.c.d.e.f.g.h" },
+      { kind: "restrict-state-transition", callee: ["*.policyRevision.updateMany"], argument: 0, field: "data.state", allowFrom: ["packages/persistence/src/policies.ts"], transitions: [{ from: "draft", to: "approved" }, { from: "*", to: "superseded" }] },
+      { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "state" },
     ];
     for (const [index, check] of checks.entries()) {
       const result = RepositoryPolicySchema.safeParse({
@@ -95,6 +107,14 @@ describe("RepositoryPolicy v1 contract", () => {
       rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where.workspaceId" } }],
     });
     expect(parsed.rules[0]?.check).toEqual({ kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: 0, requiredPath: "where.workspaceId", allowFrom: [] });
+  });
+
+  it("defaults restrict-state-transition's argument to 0, allowFrom to [], and transitions to []", () => {
+    const parsed = RepositoryPolicySchema.parse({
+      ...validPolicy,
+      rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state" } }],
+    });
+    expect(parsed.rules[0]?.check).toEqual({ kind: "restrict-state-transition", callee: ["*.updateMany"], argument: 0, field: "data.state", allowFrom: [], transitions: [] });
   });
 
   describe("layers", () => {

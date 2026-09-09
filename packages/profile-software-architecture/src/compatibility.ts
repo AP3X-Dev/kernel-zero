@@ -1,7 +1,7 @@
 import type { EvidenceFinding } from "@kernel-zero/contracts";
 
 import { resolvePolicyLayers } from "./layers";
-import { CalleeGlobSchema, type RepositoryPolicy } from "./policy";
+import { CalleeGlobSchema, IdentifierSchema, type RepositoryPolicy } from "./policy";
 
 const messageCodesByKind: Readonly<Record<RepositoryPolicy["rules"][number]["check"]["kind"], readonly string[]>> = Object.freeze({
   "forbid-import-edge": ["DENIED_IMPORT"],
@@ -15,6 +15,7 @@ const messageCodesByKind: Readonly<Record<RepositoryPolicy["rules"][number]["che
   "require-tenant-parameter": ["TENANT_PARAMETER_MISSING"],
   "restrict-call-site": ["RESTRICTED_CALL"],
   "restrict-property-write": ["PROPERTY_WRITE_DENIED", "PROPERTY_WRITE_PROOF_FAILED"],
+  "restrict-state-transition": ["STATE_TRANSITION_DENIED", "STATE_TRANSITION_PROOF_FAILED"],
 });
 
 export function findingCompatibilityReason(unresolvedPolicy: RepositoryPolicy, finding: EvidenceFinding): string | null {
@@ -85,6 +86,19 @@ export function findingCompatibilityReason(unresolvedPolicy: RepositoryPolicy, f
       // The unresolved case reports the glob itself, so a chain may carry `*` segments.
       const chain = body.slice(0, -suffix.length);
       return CalleeGlobSchema.safeParse(chain).success && globMatches(chain, check.callee) ? null : "rule_subject_mismatch";
+    }
+    case "restrict-state-transition": {
+      const check = rule.check;
+      const body = stripPrefix(finding.subject, `transition:${check.field.split(".").at(-1) ?? check.field}:`);
+      if (body === null) return "rule_subject_mismatch";
+      // Chain form for both codes; the pair form only reports a denied transition. A chain segment cannot contain `-`, so the forms never collide.
+      if (CalleeGlobSchema.safeParse(body).success && globMatches(body, check.callee)) return null;
+      if (finding.messageCode !== "STATE_TRANSITION_DENIED") return "rule_subject_mismatch";
+      const [from, to, ...rest] = body.split("->");
+      return rest.length === 0 && from !== undefined && to !== undefined
+        && (from === "*" || IdentifierSchema.safeParse(from).success) && IdentifierSchema.safeParse(to).success
+        ? null
+        : "rule_subject_mismatch";
     }
   }
 }

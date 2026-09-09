@@ -548,10 +548,7 @@
                   "maximum": 9
                 },
                 "requiredPath": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 200,
-                  "pattern": "^[A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*){0,7}$"
+                  "$ref": "#/$defs/__schema21"
                 },
                 "allowFrom": {
                   "default": [],
@@ -563,6 +560,51 @@
                 "files",
                 "callee",
                 "requiredPath"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "restrict-state-transition"
+                },
+                "callee": {
+                  "minItems": 1,
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema20"
+                  }
+                },
+                "argument": {
+                  "default": 0,
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9
+                },
+                "field": {
+                  "$ref": "#/$defs/__schema21"
+                },
+                "allowFrom": {
+                  "default": [],
+                  "$ref": "#/$defs/__schema7"
+                },
+                "transitions": {
+                  "default": [],
+                  "minItems": 0,
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema22"
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "callee",
+                "field"
               ],
               "additionalProperties": false
             }
@@ -625,6 +667,36 @@
       "minLength": 1,
       "maxLength": 200,
       "pattern": "^[A-Za-z_$*][\\w$*]*(?:\\.[A-Za-z_$*][\\w$*]*)*$"
+    },
+    "__schema21": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*){0,7}$"
+    },
+    "__schema22": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/__schema19"
+            },
+            {
+              "type": "string",
+              "const": "*"
+            }
+          ]
+        },
+        "to": {
+          "$ref": "#/$defs/__schema19"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
     }
   }
 }

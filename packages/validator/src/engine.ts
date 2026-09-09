@@ -9,6 +9,7 @@ import { evaluateGovernedOperations } from "./checks/governed";
 import { evaluateForbiddenImports, evaluateRequiredImports } from "./checks/imports";
 import { evaluatePropertyWrites } from "./checks/property-write";
 import { evaluateClosedRegistry } from "./checks/registry";
+import { evaluateStateTransitions } from "./checks/state-transition";
 import { evaluateTenantParameters } from "./checks/tenant";
 import {
   compareFindings,
@@ -100,6 +101,9 @@ function evaluateRule(
     case "require-call-argument":
       evaluateCallArguments({ ...rule, check: rule.check }, repository, failedPaths, findings);
       return;
+    case "restrict-state-transition":
+      evaluateStateTransitions({ ...rule, check: rule.check }, repository, failedPaths, findings);
+      return;
   }
 }
 
@@ -108,6 +112,7 @@ function ruleClaimsPath(check: PolicyCheck, filePath: string): boolean {
     case "forbid-import-edge":
       return check.from.some((glob) => matchesGlob(filePath, glob));
     case "restrict-call-site":
+    case "restrict-state-transition":
       return true;
     case "require-context-parameter":
       return (check.expectedType?.kind === "export" && check.expectedType.file === filePath)

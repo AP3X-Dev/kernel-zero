@@ -17,6 +17,8 @@ export const FINDING_MESSAGE_CODES = Object.freeze([
   "REQUIRED_EXPORT_KEY_MISSING",
   "REQUIRED_IMPORT_MISSING",
   "RESTRICTED_CALL",
+  "STATE_TRANSITION_DENIED",
+  "STATE_TRANSITION_PROOF_FAILED",
   "TENANT_PARAMETER_MISSING",
   "UNREGISTERED_DECLARATION",
 ] as const);
@@ -39,6 +41,8 @@ const messages: Readonly<Record<FindingMessageCode, string>> & EvidenceMessages 
   REQUIRED_EXPORT_KEY_MISSING: "A required exported object key is missing.",
   REQUIRED_IMPORT_MISSING: "A required module import is missing.",
   RESTRICTED_CALL: "A restricted call was found outside its allowed location.",
+  STATE_TRANSITION_DENIED: "A governed state field is written outside its allowed writer or through an unlisted transition.",
+  STATE_TRANSITION_PROOF_FAILED: "A write to a governed state field could not be proven against the allowed transitions.",
   TENANT_PARAMETER_MISSING: "A tenant-scoped symbol is missing its required tenant parameter.",
   UNREGISTERED_DECLARATION: "A declaration is not present in its required closed registry.",
 });

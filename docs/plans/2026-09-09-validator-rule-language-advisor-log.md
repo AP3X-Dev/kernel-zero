@@ -56,3 +56,6 @@ Session `autonomous-validator-rule-language-2026-09-09`. Every decision and ever
 
 ### Verdict 8: kz-checker on step 2 (require-call-argument)
 **Verdict:** PASS; both bites reproduced; three deviations acceptable; two follow-ups filed in the run-state (F1 digest EOL portability, F2 bare-identifier alias ceiling).
+
+### Verdict 9: kz-checker on step 3 (restrict-state-transition)
+**Verdict:** PASS; both bites reproduced; benchmark spread judged external load; four caveats acceptable; F3 filed.

@@ -223,6 +223,37 @@
         ]
       },
       "remediation": "Put workspaceId in the where selector of every tenant-scoped query so a sibling tenant's rows are never reachable."
+    },
+    {
+      "id": "policy-revision-state-is-governed",
+      "title": "Policy revision state changes only through the governed lifecycle",
+      "level": "error",
+      "check": {
+        "kind": "restrict-state-transition",
+        "callee": [
+          "*.policyRevision.updateMany"
+        ],
+        "argument": 0,
+        "field": "data.state",
+        "allowFrom": [
+          "packages/persistence/src/policies.ts"
+        ],
+        "transitions": [
+          {
+            "from": "draft",
+            "to": "approved"
+          },
+          {
+            "from": "approved",
+            "to": "active"
+          },
+          {
+            "from": "active",
+            "to": "superseded"
+          }
+        ]
+      },
+      "remediation": "Change a policy revision's state only from policies.ts, with a literal where.state predicate, through draft->approved, approved->active, or active->superseded."
     }
   ]
 }

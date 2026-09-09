@@ -35,6 +35,12 @@ const policy = {
     level: "error",
     remediation: "Add where.workspaceId to the selector.",
     title: "Tenant queries carry the workspace",
+  }, {
+    check: { allowFrom: ["src/**"], callee: ["*.updateMany"], field: "data.state", kind: "restrict-state-transition", transitions: [{ from: "draft", to: "approved" }] },
+    id: "state-is-governed",
+    level: "error",
+    remediation: "Write state through a listed transition.",
+    title: "State is governed",
   }],
   scope: { exclude: [], include: ["src/**/*.ts"], languages: ["typescript"] },
 };

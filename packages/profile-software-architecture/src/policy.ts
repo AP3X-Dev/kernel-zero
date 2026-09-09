@@ -24,7 +24,9 @@ const ModuleDenialSchema = z.string().min(6).max(500).refine(
   "Denied targets must declare module, module-prefix, or path semantics.",
 );
 
-const IdentifierSchema = z.string().min(1).max(200).regex(/^[A-Za-z_$][\w$]*$/u, "Export names must be a single identifier.");
+export const IdentifierSchema = z.string().min(1).max(200).regex(/^[A-Za-z_$][\w$]*$/u, "Export names must be a single identifier.");
+/** One legal state pair; `from: "*"` allows any source state for that `to`. */
+const StateTransitionSchema = z.strictObject({ from: z.union([IdentifierSchema, z.literal("*")]), to: IdentifierSchema });
 /** A glob over a resolved callee chain such as `*.findMany` or `prisma.*.updateMany`; `*` spans dots. */
 export const CalleeGlobSchema = z.string().min(1).max(200).regex(/^[A-Za-z_$*][\w$*]*(?:\.[A-Za-z_$*][\w$*]*)*$/u, "Callee globs must be dotted identifier segments, each of which may contain *.");
 /** 1..8 identifier segments joined by `.`, such as `where.workspaceId`. */
@@ -82,6 +84,14 @@ export const PolicyCheckSchema = z.discriminatedUnion("kind", [
     argument: z.number().int().min(0).max(9).default(0),
     requiredPath: DottedPathSchema,
     allowFrom: OptionalRuleGlobList.default([]),
+  }),
+  z.strictObject({
+    kind: z.literal("restrict-state-transition"),
+    callee: uniqueArray(CalleeGlobSchema, 1, 100),
+    argument: z.number().int().min(0).max(9).default(0),
+    field: DottedPathSchema,
+    allowFrom: OptionalRuleGlobList.default([]),
+    transitions: uniqueArray(StateTransitionSchema, 0, 100).default([]),
   }),
 ]);
 
