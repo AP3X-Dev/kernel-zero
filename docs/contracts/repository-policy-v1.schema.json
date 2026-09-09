@@ -607,6 +607,39 @@
                 "field"
               ],
               "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "require-ingress-parse"
+                },
+                "files": {
+                  "$ref": "#/$defs/__schema5"
+                },
+                "symbols": {
+                  "$ref": "#/$defs/__schema15"
+                },
+                "parserCalls": {
+                  "$ref": "#/$defs/__schema16"
+                },
+                "readerCalls": {
+                  "default": [],
+                  "$ref": "#/$defs/__schema23"
+                },
+                "allowedCalls": {
+                  "default": [],
+                  "$ref": "#/$defs/__schema23"
+                }
+              },
+              "required": [
+                "kind",
+                "files",
+                "symbols",
+                "parserCalls"
+              ],
+              "additionalProperties": false
             }
           ]
         },
@@ -697,6 +730,14 @@
         "to"
       ],
       "additionalProperties": false
+    },
+    "__schema23": {
+      "minItems": 0,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema15"
+      }
     }
   }
 }

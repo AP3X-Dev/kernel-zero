@@ -118,6 +118,26 @@ describe("repository evidence contract", () => {
     }
   });
 
+  it("publishes the ingress codes with their exact messages and accepts the three subject forms in findings", () => {
+    expect(findingMessage("INGRESS_PARSE_MISSING")).toBe("An ingress function never passes its input through a required parser.");
+    expect(findingMessage("INGRESS_ESCAPE")).toBe("Unparsed ingress input reaches a call, return, or binding outside the allowed set.");
+    expect(findingMessage("INGRESS_PROOF_FAILED")).toBe("Ingress input flow could not be proven within the function.");
+    const original = validEvidence();
+    const finding = onlyFinding(original);
+    const cases = [
+      ["INGRESS_PARSE_MISSING", "symbol:POST:parser"],
+      ["INGRESS_ESCAPE", "symbol:POST:escape:request.json"],
+      ["INGRESS_ESCAPE", "symbol:POST:escape:return"],
+      ["INGRESS_PROOF_FAILED", "symbol:POST:proof"],
+    ] as const;
+    for (const [messageCode, subject] of cases) {
+      const identity = findingIdentity({ location, messageCode, path: finding.path, policyDigest: original.policy.digest, ruleId: finding.ruleId, subject });
+      const rewritten = { ...finding, ...identity, message: findingMessage(messageCode), messageCode, subject };
+      const base = { ...original, findings: [rewritten] };
+      expect(RepositoryEvidenceSchema.safeParse({ ...base, integrity: { algorithm: "sha256", digest: canonicalEvidenceDigest(base) } }).success).toBe(true);
+    }
+  });
+
   it("excludes run metadata and diagnostic duration from integrity", () => {
     const original = validEvidence();
     expect(canonicalEvidenceDigest({ ...original, runId: "0195f000-0000-7000-8000-000000000099" })).toBe(original.integrity.digest);

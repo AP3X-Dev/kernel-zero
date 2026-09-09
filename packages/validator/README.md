@@ -118,6 +118,36 @@ ignored.
 }
 ```
 
+## Parsed ingress
+
+`require-ingress-parse` proves that every exported function matching
+`symbols` passes its input through one of `parserCalls` before that input
+escapes. Parameters are untrusted, and so is everything read from them,
+awaited from them, built around them, or returned by a `readerCalls` call;
+an untrusted value may reach only `parserCalls`, `readerCalls`, and
+`allowedCalls`. A handler that never parses is `INGRESS_PARSE_MISSING`; input
+reaching any other call, a `return`, an outer binding, or a capturing closure
+is `INGRESS_ESCAPE`; a handler the pass cannot follow (built by a factory,
+containing a loop, calling something unresolvable) is `INGRESS_PROOF_FAILED`.
+The glob has no alternation, so declare one rule per exported name.
+
+```json
+{
+  "id": "route-handlers-parse-their-input-post",
+  "title": "POST route handlers parse their input before it escapes",
+  "level": "error",
+  "check": {
+    "kind": "require-ingress-parse",
+    "files": ["layer:transport"],
+    "symbols": "POST",
+    "parserCalls": ["readEvidenceRequest"],
+    "readerCalls": ["dependencies.resolveSubmission"],
+    "allowedCalls": ["dependencies.service.submit", "errorResponse"]
+  },
+  "remediation": "Parse the request before anything else sees it."
+}
+```
+
 ## Explain and init
 
 ```text

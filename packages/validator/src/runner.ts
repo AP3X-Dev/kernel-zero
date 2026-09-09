@@ -217,5 +217,8 @@ function publicMessageCode(code: RawFindingMessageCode): FindingMessageCode {
     case "STATE_TRANSITION_DENIED_WRITER":
     case "STATE_TRANSITION_DENIED_PAIR": return "STATE_TRANSITION_DENIED";
     case "STATE_TRANSITION_UNPROVABLE": return "STATE_TRANSITION_PROOF_FAILED";
+    case "INGRESS_PARSE_MISSING": return "INGRESS_PARSE_MISSING";
+    case "INGRESS_ESCAPE": return "INGRESS_ESCAPE";
+    case "INGRESS_UNRESOLVED": return "INGRESS_PROOF_FAILED";
   }
 }

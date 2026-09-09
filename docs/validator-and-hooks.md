@@ -97,6 +97,36 @@ a write whose `where` carries no literal `state`, or whose `data` is a spread,
 fails with `STATE_TRANSITION_PROOF_FAILED`. Writes that touch other columns
 are ignored.
 
+## Parsed ingress
+
+The five self-policy rules `route-handlers-parse-their-input-{get,post,put,patch,delete}`
+use `require-ingress-parse` to prove that every exported HTTP verb handler in
+`layer:transport` passes its request through `readEvidenceRequest` before the
+request, anything read from it, or the result of
+`dependencies.resolveSubmission` reaches anything other than
+`dependencies.service.submit` or `errorResponse`. One rule per verb because
+the symbol glob has no alternation.
+
+```json
+"check": {
+  "kind": "require-ingress-parse",
+  "files": ["layer:transport"],
+  "symbols": "POST",
+  "parserCalls": ["readEvidenceRequest"],
+  "readerCalls": ["dependencies.resolveSubmission"],
+  "allowedCalls": ["dependencies.service.submit", "errorResponse"]
+}
+```
+
+Replacing `readEvidenceRequest(request)` with `request.json()` fails the gate
+with `INGRESS_ESCAPE` and subject `symbol:POST:escape:request.json`; a handler
+that never parses fails with `INGRESS_PARSE_MISSING`; a handler built by a
+factory (`export const POST = createHandler(...)`), one containing a loop, or
+one calling something the validator cannot resolve fails with
+`INGRESS_PROOF_FAILED`. The route's production wiring therefore sits behind a
+no-argument `evidenceDependencies()` accessor so the exported `POST` is
+provable on its own.
+
 ## Agent-facing commands
 
 `kernel-zero explain --policy|--evidence <file>` renders one strictly parsed

@@ -19,6 +19,8 @@ const LayersSchema = z.record(LayerNameSchema, uniqueArray(LayerGlobSchema, 1, 1
   `At most ${String(MAX_LAYERS)} layers may be declared.`,
 );
 const ExactList = uniqueArray(NonemptyExactStringSchema, 1, 100);
+// An explicit `[]` must parse exactly like an absent list, so the optional call lists allow zero entries.
+const OptionalExactList = uniqueArray(NonemptyExactStringSchema, 0, 100);
 const ModuleDenialSchema = z.string().min(6).max(500).refine(
   (value) => value.startsWith("module:") || value.startsWith("module-prefix:") || value.startsWith("path:"),
   "Denied targets must declare module, module-prefix, or path semantics.",
@@ -92,6 +94,15 @@ export const PolicyCheckSchema = z.discriminatedUnion("kind", [
     field: DottedPathSchema,
     allowFrom: OptionalRuleGlobList.default([]),
     transitions: uniqueArray(StateTransitionSchema, 0, 100).default([]),
+  }),
+  z.strictObject({
+    kind: z.literal("require-ingress-parse"),
+    files: RuleGlobList,
+    // A glob over exported function names; the glob grammar has no alternation, so one rule per name family.
+    symbols: NonemptyExactStringSchema,
+    parserCalls: ExactList,
+    readerCalls: OptionalExactList.default([]),
+    allowedCalls: OptionalExactList.default([]),
   }),
 ]);
 

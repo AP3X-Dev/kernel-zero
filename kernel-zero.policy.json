@@ -254,6 +254,121 @@
         ]
       },
       "remediation": "Change a policy revision's state only from policies.ts, with a literal where.state predicate, through draft->approved, approved->active, or active->superseded."
+    },
+    {
+      "id": "route-handlers-parse-their-input-get",
+      "title": "GET route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "GET",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "route-handlers-parse-their-input-post",
+      "title": "POST route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "POST",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "route-handlers-parse-their-input-put",
+      "title": "PUT route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "PUT",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "route-handlers-parse-their-input-patch",
+      "title": "PATCH route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "PATCH",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "route-handlers-parse-their-input-delete",
+      "title": "DELETE route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "DELETE",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
     }
   ]
 }

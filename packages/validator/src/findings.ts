@@ -35,7 +35,10 @@ export type RawFindingMessageCode =
   | "CALL_ARGUMENT_UNRESOLVED"
   | "STATE_TRANSITION_DENIED_WRITER"
   | "STATE_TRANSITION_DENIED_PAIR"
-  | "STATE_TRANSITION_UNPROVABLE";
+  | "STATE_TRANSITION_UNPROVABLE"
+  | "INGRESS_PARSE_MISSING"
+  | "INGRESS_ESCAPE"
+  | "INGRESS_UNRESOLVED";
 
 export interface RawFindingLocation {
   readonly startLine: number;

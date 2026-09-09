@@ -59,3 +59,11 @@ Session `autonomous-validator-rule-language-2026-09-09`. Every decision and ever
 
 ### Verdict 9: kz-checker on step 3 (restrict-state-transition)
 **Verdict:** PASS; both bites reproduced; benchmark spread judged external load; four caveats acceptable; F3 filed.
+
+### Decision 7: owner checkpoint before the route edit (human)
+**Question:** Confirm removal of `createEvidencePostHandler` and the `EvidenceRouteDependencies` injection seam so `require-ingress-parse` can be dogfooded?
+**Owner decided:** Confirm, proceed with step 4.
+**Reasoning:** CLAUDE.md refactoring rule and the skill guardrail on deleting existing functionality; PRP FR-ING-006 authorizes correcting the route.
+
+### Verdict 10: kz-checker on step 4 (require-ingress-parse)
+**Verdict:** PASS; three bites reproduced; all nine deviations acceptable (method-call receivers carrying untrusted is sound and produces no false escape on the route); browser suite 12 passed.

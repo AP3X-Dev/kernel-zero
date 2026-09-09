@@ -7,6 +7,7 @@ import { evaluateContextParameters } from "./checks/context";
 import { evaluateExportKeys } from "./checks/exports";
 import { evaluateGovernedOperations } from "./checks/governed";
 import { evaluateForbiddenImports, evaluateRequiredImports } from "./checks/imports";
+import { evaluateIngressParses } from "./checks/ingress";
 import { evaluatePropertyWrites } from "./checks/property-write";
 import { evaluateClosedRegistry } from "./checks/registry";
 import { evaluateStateTransitions } from "./checks/state-transition";
@@ -104,6 +105,9 @@ function evaluateRule(
     case "restrict-state-transition":
       evaluateStateTransitions({ ...rule, check: rule.check }, repository, failedPaths, findings);
       return;
+    case "require-ingress-parse":
+      evaluateIngressParses({ ...rule, check: rule.check }, repository, failedPaths, findings);
+      return;
   }
 }
 
@@ -123,6 +127,7 @@ function ruleClaimsPath(check: PolicyCheck, filePath: string): boolean {
     case "require-boundary-parse":
     case "require-governed-operation":
     case "require-call-argument":
+    case "require-ingress-parse":
       return check.files.some((glob) => matchesGlob(filePath, glob));
     case "restrict-property-write":
       return check.targetType.file === filePath || check.files.some((glob) => matchesGlob(filePath, glob));

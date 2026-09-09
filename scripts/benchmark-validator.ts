@@ -41,6 +41,12 @@ const policy = {
     level: "error",
     remediation: "Write state through a listed transition.",
     title: "State is governed",
+  }, {
+    check: { files: ["src/**/*.ts"], kind: "require-ingress-parse", parserCalls: ["parse"], symbols: "handler*" },
+    id: "handlers-parse-their-input",
+    level: "error",
+    remediation: "Parse the request before it escapes.",
+    title: "Handlers parse their input",
   }],
   scope: { exclude: [], include: ["src/**/*.ts"], languages: ["typescript"] },
 };

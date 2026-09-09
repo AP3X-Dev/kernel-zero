@@ -13,6 +13,8 @@ const CA = { allowFrom: ["src/audit.ts"], argument: 0, callee: ["*.findFirst", "
 
 const ST = { allowFrom: ["src/persistence/policies.ts"], argument: 0, callee: ["*.policyRevision.updateMany"], field: "data.state", kind: "restrict-state-transition", transitions: [{ from: "draft", to: "approved" }] };
 
+const ING = { allowedCalls: ["dependencies.service.submit", "errorResponse"], files: ["src/api/**/*.ts"], kind: "require-ingress-parse", parserCalls: ["readEvidenceRequest"], readerCalls: ["dependencies.resolveSubmission"], symbols: "POST" };
+
 const checkCases: readonly Readonly<{
   check: Record<string, unknown>;
   code: FindingMessageCode;
@@ -44,6 +46,12 @@ const checkCases: readonly Readonly<{
   { check: ST, code: "STATE_TRANSITION_DENIED", subject: "transition:state:*->active" },
   { check: ST, code: "STATE_TRANSITION_PROOF_FAILED", subject: "transition:state:tx.policyRevision.updateMany" },
   { check: ST, code: "STATE_TRANSITION_PROOF_FAILED", subject: "transition:state:*.policyRevision.updateMany" },
+  { check: ING, code: "INGRESS_PARSE_MISSING", subject: "symbol:POST:parser" },
+  { check: ING, code: "INGRESS_ESCAPE", subject: "symbol:POST:escape:request.json" },
+  { check: ING, code: "INGRESS_ESCAPE", subject: "symbol:POST:escape:return" },
+  { check: ING, code: "INGRESS_ESCAPE", subject: "symbol:POST:escape:closure" },
+  { check: ING, code: "INGRESS_ESCAPE", subject: "symbol:handlers.POST:escape:sink" },
+  { check: ING, code: "INGRESS_PROOF_FAILED", subject: "symbol:POST:proof" },
 ];
 
 function policy(check: Record<string, unknown>) {
@@ -109,6 +117,20 @@ describe("evidence rule compatibility", () => {
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_DENIED", "property:src/domain/job.ts#Job.retries"))).toBe("rule_subject_mismatch");
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_DENIED", "property:src/domain/task.ts#Job.status"))).toBe("rule_subject_mismatch");
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_PROOF_FAILED", "property:src/domain/job.ts#Task.status"))).toBe("rule_subject_mismatch");
+  });
+
+  it("rejects ingress subjects with another symbol, a suffix owned by another code, or a malformed escape target", () => {
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_PARSE_MISSING", "symbol:GET:parser"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_PARSE_MISSING", "symbol:POST:proof"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_PROOF_FAILED", "symbol:POST:parser"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol:POST:parser"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol:POST:escape:"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol:POST:escape:request..json"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol:POST:escape:a/b"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol::escape:return"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_PROOF_FAILED", "symbol:POST"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("BOUNDARY_PARSE_REQUIRED", "symbol:POST:save"))).toBe("rule_code_mismatch");
+    expect(findingCompatibilityReason(policy({ ...ING, symbols: "P*" }), finding("INGRESS_PROOF_FAILED", "symbol:PUT:proof"))).toBeNull();
   });
 
   it("rejects call-argument subjects with another index, path, or a chain outside the callee globs", () => {

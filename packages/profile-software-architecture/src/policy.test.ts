@@ -68,11 +68,18 @@ describe("RepositoryPolicy v1 contract", () => {
     ["state transition duplicate pair", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "approved" }, { from: "draft", to: "approved" }] } }] }],
     ["state transition index above nine", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", argument: 10 } }] }],
     ["state transition unknown field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", files: ["src/**"] } }] }],
+    ["ingress parse missing parser calls", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST" } }] }],
+    ["ingress parse empty parser list", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: [] } }] }],
+    ["ingress parse empty symbols", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "", parserCalls: ["parse"] } }] }],
+    ["ingress parse duplicate reader", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"], readerCalls: ["read", "read"] } }] }],
+    ["ingress parse empty allowed entry", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"], allowedCalls: [""] } }] }],
+    ["ingress parse unknown field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"], callee: ["x"] } }] }],
+    ["ingress parse empty files", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: [], symbols: "POST", parserCalls: ["parse"] } }] }],
   ])("rejects %s", (_label, value) => {
     expect(RepositoryPolicySchema.safeParse(value).success).toBe(false);
   });
 
-  it("accepts all twelve closed check variants and rejects variant-only drift", () => {
+  it("accepts all thirteen closed check variants and rejects variant-only drift", () => {
     const checks = [
       { kind: "forbid-import-edge", from: ["apps/**"], deny: ["module:x"] },
       { kind: "require-import", files: ["apps/**"], module: "server-only", allowTypeOnly: false },
@@ -91,6 +98,8 @@ describe("RepositoryPolicy v1 contract", () => {
       { kind: "require-call-argument", files: ["src/**"], callee: ["*"], requiredPath: "a.b.c.d.e.f.g.h" },
       { kind: "restrict-state-transition", callee: ["*.policyRevision.updateMany"], argument: 0, field: "data.state", allowFrom: ["packages/persistence/src/policies.ts"], transitions: [{ from: "draft", to: "approved" }, { from: "*", to: "superseded" }] },
       { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "state" },
+      { kind: "require-ingress-parse", files: ["apps/control/src/app/api/**/*.ts"], symbols: "POST", parserCalls: ["readEvidenceRequest"], readerCalls: ["dependencies.resolveSubmission"], allowedCalls: ["dependencies.service.submit", "errorResponse"] },
+      { kind: "require-ingress-parse", files: ["src/**"], symbols: "*", parserCalls: ["Schema.parse"], readerCalls: [], allowedCalls: [] },
     ];
     for (const [index, check] of checks.entries()) {
       const result = RepositoryPolicySchema.safeParse({
@@ -115,6 +124,14 @@ describe("RepositoryPolicy v1 contract", () => {
       rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state" } }],
     });
     expect(parsed.rules[0]?.check).toEqual({ kind: "restrict-state-transition", callee: ["*.updateMany"], argument: 0, field: "data.state", allowFrom: [], transitions: [] });
+  });
+
+  it("defaults require-ingress-parse's readerCalls and allowedCalls to []", () => {
+    const parsed = RepositoryPolicySchema.parse({
+      ...validPolicy,
+      rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"] } }],
+    });
+    expect(parsed.rules[0]?.check).toEqual({ kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"], readerCalls: [], allowedCalls: [] });
   });
 
   describe("layers", () => {

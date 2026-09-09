@@ -12,6 +12,7 @@ const messageCodesByKind: Readonly<Record<RepositoryPolicy["rules"][number]["che
   "require-export-keys": ["REQUIRED_EXPORT_KEY_MISSING"],
   "require-governed-operation": ["GOVERNED_OPERATION_INVALID"],
   "require-import": ["REQUIRED_IMPORT_MISSING"],
+  "require-ingress-parse": ["INGRESS_PARSE_MISSING", "INGRESS_ESCAPE", "INGRESS_PROOF_FAILED"],
   "require-tenant-parameter": ["TENANT_PARAMETER_MISSING"],
   "restrict-call-site": ["RESTRICTED_CALL"],
   "restrict-property-write": ["PROPERTY_WRITE_DENIED", "PROPERTY_WRITE_PROOF_FAILED"],
@@ -99,6 +100,28 @@ export function findingCompatibilityReason(unresolvedPolicy: RepositoryPolicy, f
         && (from === "*" || IdentifierSchema.safeParse(from).success) && IdentifierSchema.safeParse(to).success
         ? null
         : "rule_subject_mismatch";
+    }
+    case "require-ingress-parse": {
+      const check = rule.check;
+      const body = stripPrefix(finding.subject, "symbol:");
+      // The qualified name never contains ":", so the first ":" ends it; each code owns exactly one suffix form.
+      const separator = body?.indexOf(":") ?? -1;
+      if (body === null || separator < 1) return "rule_subject_mismatch";
+      const qualifiedName = body.slice(0, separator);
+      const suffix = body.slice(separator + 1);
+      const symbolName = qualifiedName.split(".").at(-1) ?? qualifiedName;
+      if (!isQualifiedName(qualifiedName) || !(globMatches(qualifiedName, [check.symbols]) || globMatches(symbolName, [check.symbols]))) {
+        return "rule_subject_mismatch";
+      }
+      switch (finding.messageCode) {
+        case "INGRESS_PARSE_MISSING": return suffix === "parser" ? null : "rule_subject_mismatch";
+        case "INGRESS_PROOF_FAILED": return suffix === "proof" ? null : "rule_subject_mismatch";
+        default: {
+          const target = stripPrefix(suffix, "escape:");
+          // `return` and `closure` are identifier chains themselves, so one grammar covers every escape target.
+          return target !== null && isIdentifierChain(target) ? null : "rule_subject_mismatch";
+        }
+      }
     }
   }
 }
