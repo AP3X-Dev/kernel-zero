@@ -22,6 +22,7 @@ const groups: readonly RequirementGroup[] = [
   { count: 5, evidence: "state-transition fixture matrix, compatibility two-subject grammar tests, self-policy rule policy-revision-state-is-governed with rogue-writer and unlisted-pair bite proofs", prefix: "FR-STA", qualification: "local unit/static proof; literal predicates only" },
   { count: 6, evidence: "ingress fixture matrix incl. closure, monotone widening, factory-bound export, route test via mocked runtime, five self-policy verb rules with request.json escape and factory-bound proof bites", prefix: "FR-ING", qualification: "local unit/static proof; intra-procedural, allowed-call results trusted by declaration" },
   { count: 5, evidence: "self-policy uses layers and all three kinds, contracts regenerated and checked, README and validator docs examples, this traceability, benchmark rules per kind under 30 s and 1 GiB", prefix: "FR-DOG", qualification: "local executable proof; benchmark corpus has no calls, so numbers are a floor for the new evaluators" },
+  { count: 12, evidence: "Python policy, fact-contract, pure checker, CPython adapter, compatibility, runner, self-policy, generated-contract, and clean installed-package tests", prefix: "FR-PY", qualification: "local Windows CPython 3.12 and npm-tarball proof; Linux and CPython 3.11/3.13/3.14 qualification pending" },
 ];
 
 const rows = groups.flatMap((group) => Array.from({ length: group.count }, (_, index) => {

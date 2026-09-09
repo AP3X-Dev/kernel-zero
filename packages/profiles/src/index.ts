@@ -1,11 +1,13 @@
 import { PolicyEnvelopeSchema, type PolicyEnvelope, type Profile } from "@kernel-zero/contracts";
 import { manifestProfile } from "@kernel-zero/profile-manifest";
+import { pythonProfile } from "@kernel-zero/profile-python";
 import { softwareArchitectureProfile } from "@kernel-zero/profile-software-architecture";
 import { workflowProfile } from "@kernel-zero/profile-workflow";
 
 export const PROFILES: readonly Profile[] = Object.freeze([
   softwareArchitectureProfile,
   manifestProfile,
+  pythonProfile,
   workflowProfile,
 ]);
 

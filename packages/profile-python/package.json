@@ -1,0 +1,15 @@
+{
+  "name": "@kernel-zero/profile-python",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./runner": "./src/runner.ts"
+  },
+  "dependencies": {
+    "@kernel-zero/contracts": "*",
+    "@kernel-zero/domain": "*",
+    "zod": "^4.1.0"
+  }
+}

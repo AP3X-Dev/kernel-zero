@@ -1,8 +1,10 @@
 # `@kernel-zero/validator`
 
 The KERNEL ZERO validator is a deterministic, network-free command-line checker
-for versioned repository architecture policy. Version `0.1.0` intentionally
-provides a CLI only; it has no JavaScript library API.
+for versioned repository, package-manifest, Python, and workflow policies.
+Version `0.3.0` provides four CLI executables, named policy layers, and the `require-call-argument`, `restrict-state-transition`, and `require-ingress-parse` check kinds, and intentionally has no JavaScript
+library API. Everything needed at runtime is bundled; consumers do not need the
+KERNEL ZERO repository or its workspace packages.
 
 ## Install
 
@@ -15,6 +17,11 @@ npm install --save-dev @kernel-zero/validator
 The package installs the exact TypeScript compiler version used by the
 validator.
 
+Versioned schemas, valid examples, deliberately malformed fixtures, and
+contract documentation are installed at
+`node_modules/@kernel-zero/validator/contracts`. Agents can consume these files
+without accessing the KERNEL ZERO repository.
+
 ## Run
 
 ```text
@@ -25,15 +32,44 @@ kernel-zero validate \
   --out .kernel-zero/evidence.json
 ```
 
+Validate `package.json` with a `ManifestPolicy`:
+
+```text
+kernel-zero-manifest kernel-zero.manifest.policy.json . \
+  00000000-0000-7000-8000-000000000000 \
+  .kernel-zero/manifest-evidence.json
+```
+
+Validate GitHub Actions files with a `WorkflowPolicy`:
+
+```text
+kernel-zero-workflow kernel-zero.workflow.policy.json . \
+  00000000-0000-7000-8000-000000000000 \
+  .kernel-zero/workflow-evidence.json
+```
+
+Validate Python 3.11–3.14 source with a `PythonPolicy`:
+
+```text
+kernel-zero-python kernel-zero.python.policy.json . \
+  00000000-0000-7000-8000-000000000000 \
+  .kernel-zero/python-evidence.json
+```
+
+The Python executable uses CPython's standard-library AST parser. It requires a
+local CPython 3.11 through 3.14 runtime but no Python packages. Set
+`KERNEL_ZERO_PYTHON` to an exact interpreter path when automatic `python3`,
+`python`, or Windows `py -3` discovery is not appropriate.
+
 Replace the workspace value with the governed workspace identifier. A policy
 example and the complete hook and CI setup are available in the
 [KERNEL ZERO repository](https://github.com/AP3X-Dev/KERNEL-ZERO/blob/main/docs/validator-and-hooks.md).
 
-The command exits `0` when policy passes, `1` for definite violations, and `2`
+Every command exits `0` when policy passes, `1` for definite violations, and `2`
 when validation cannot complete safely. Both nonzero outcomes should block the
-protected operation. The JSON evidence at `--out` is authoritative; the command
-also prints one summary line and one deterministic line per finding (level,
-rule, path:line:column, code, subject) followed by the policy remediation.
+protected operation. Each JSON evidence artifact is authoritative. Repository
+validation also prints one deterministic line per finding (level, rule,
+path:line:column, code, subject) followed by the policy remediation.
 
 ## Layers
 
@@ -164,8 +200,8 @@ existing file, and prints the AGENTS/CLAUDE snippet, the `validator:self`
 script, and the exact validator version to install. It never edits
 `package.json`, agent instructions, git configuration, or branch protection.
 
-Validation reads contained TypeScript and TSX files, writes normalized evidence,
-and performs no network requests or source upload.
+Validation reads only contained claimed files, writes normalized evidence, and
+performs no network requests or source upload.
 
 ## License
 

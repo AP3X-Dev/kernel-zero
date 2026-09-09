@@ -36,6 +36,8 @@ export type ValidatorRuntimeOptions = Readonly<{
 
 export type ValidationRun = ValidationOutcome & Readonly<{ evidence: RepositoryEvidence; policy: RepositoryPolicy }>;
 
+// Evidence identifies the stable validator engine contract, which remains v0.1.0.
+// The npm distribution version may advance independently when adding package entry points.
 const TOOL_VERSION = "0.1.0";
 
 export class ValidatorRunError extends Error {

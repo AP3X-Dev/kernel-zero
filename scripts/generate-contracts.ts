@@ -16,6 +16,7 @@ import {
   softwareArchitectureProfile,
 } from "@kernel-zero/profile-software-architecture";
 import { manifestMessages, manifestProfile } from "@kernel-zero/profile-manifest";
+import { pythonMessages, pythonProfile } from "@kernel-zero/profile-python";
 import { workflowMessages, workflowProfile } from "@kernel-zero/profile-workflow";
 import { PROFILES } from "@kernel-zero/profiles";
 
@@ -101,6 +102,39 @@ const manifestEvidenceBase = {
 };
 const manifestEvidenceExample = { ...manifestEvidenceBase, integrity: { algorithm: "sha256" as const, digest: canonicalEvidenceDigest(manifestEvidenceBase) } };
 
+const pythonPolicyExample = {
+  apiVersion: "kernel-zero.dev/v1",
+  kind: "PythonPolicy",
+  metadata: { description: "Python architecture boundaries", name: "python-boundaries", revision: 1 },
+  scope: { exclude: ["**/tests/**"], include: ["src/**/*.py"] },
+  rules: [{
+    check: { deny: ["subprocess"], from: ["src/api/**/*.py"], kind: "forbid-import-edge" },
+    id: "api-no-processes", level: "error", remediation: "Call the isolated worker boundary.", title: "API cannot launch processes",
+  }],
+};
+const pythonLocation = { endColumn: 18, endLine: 4, startColumn: 1, startLine: 4 };
+const pythonFindingIdentity = findingIdentity({
+  location: pythonLocation, messageCode: "PYTHON_IMPORT_DENIED", path: "src/api/handler.py",
+  policyDigest: digest("1"), ruleId: "api-no-processes", subject: "module:subprocess",
+});
+const pythonFinding = {
+  ...pythonFindingIdentity, exceptionId: null, level: "error" as const, location: pythonLocation,
+  message: pythonMessages.PYTHON_IMPORT_DENIED, messageCode: "PYTHON_IMPORT_DENIED" as const,
+  path: "src/api/handler.py", ruleId: "api-no-processes", subject: "module:subprocess",
+};
+const pythonEvidenceBase = {
+  apiVersion: "kernel-zero.dev/evidence/v1" as const, exceptionBundleDigest: null,
+  findings: [pythonFinding], generatedAt: "2026-01-15T12:00:00.000Z",
+  kind: "PythonEvidence" as const,
+  policy: { digest: digest("1"), name: "python-boundaries", revision: 1 },
+  result: { ...deriveEvidenceSummary([pythonFinding], 3), durationMs: 0 },
+  runId: "0195f000-0000-7000-8000-000000000001", signature: null,
+  subject: { manifestDigest: digest("1"), repository: "example/python-service", revision: "git:0123456789abcdef0123456789abcdef01234567" },
+  tool: { name: pythonProfile.toolName, version: "0.1.0+cpython.3.12.10" },
+  workspace: "0195f000-0000-7000-8000-000000000002",
+};
+const pythonEvidenceExample = { ...pythonEvidenceBase, integrity: { algorithm: "sha256" as const, digest: canonicalEvidenceDigest(pythonEvidenceBase) } };
+
 const workflowPolicyExample = {
   apiVersion: "kernel-zero.dev/v1",
   kind: "WorkflowPolicy",
@@ -144,6 +178,8 @@ softwareArchitectureProfile.policySchema.parse(policyExample);
 softwareArchitectureProfile.evidenceSchema.parse(evidenceExample);
 manifestProfile.policySchema.parse(manifestPolicyExample);
 manifestProfile.evidenceSchema.parse(manifestEvidenceExample);
+pythonProfile.policySchema.parse(pythonPolicyExample);
+pythonProfile.evidenceSchema.parse(pythonEvidenceExample);
 workflowProfile.policySchema.parse(workflowPolicyExample);
 workflowProfile.evidenceSchema.parse(workflowEvidenceExample);
 
@@ -158,12 +194,16 @@ const outputs = new Map<string, string>([
   ["docs/contracts/examples/repository-evidence-v1.json", `${canonicalJson(evidenceExample)}\n`],
   ["docs/contracts/examples/manifest-policy-v1.json", `${canonicalJson(manifestPolicyExample)}\n`],
   ["docs/contracts/examples/manifest-evidence-v1.json", `${canonicalJson(manifestEvidenceExample)}\n`],
+  ["docs/contracts/examples/python-policy-v1.json", `${canonicalJson(pythonPolicyExample)}\n`],
+  ["docs/contracts/examples/python-evidence-v1.json", `${canonicalJson(pythonEvidenceExample)}\n`],
+  ["docs/contracts/malformed/python-policy-unknown-field.json", `${JSON.stringify({ ...pythonPolicyExample, interpreterCommand: "curl example.invalid" }, null, 2)}\n`],
   ["docs/contracts/examples/workflow-policy-v1.json", `${canonicalJson(workflowPolicyExample)}\n`],
   ["docs/contracts/examples/workflow-evidence-v1.json", `${canonicalJson(workflowEvidenceExample)}\n`],
   ["docs/contracts/malformed/repository-policy-unknown-field.json", `${JSON.stringify({ ...policyExample, command: "npm test" }, null, 2)}\n`],
   ["docs/contracts/malformed/repository-policy-path-escape.json", `${JSON.stringify({ ...policyExample, scope: { ...policyExample.scope, include: ["../private.ts"] } }, null, 2)}\n`],
   ["docs/contracts/malformed/exception-grant-set-private-data.json", `${JSON.stringify({ ...exceptionExample, rationale: "must never be exported" }, null, 2)}\n`],
   ["docs/contracts/malformed/repository-evidence-source-content.json", `${JSON.stringify({ ...evidenceExample, source: "private source text" }, null, 2)}\n`],
+  ["docs/contracts/python-profile-v1.md", `# PythonPolicy v1 / PythonEvidence v1\n\nMedia types: \`${REPOSITORY_POLICY_MEDIA_TYPE}\` (policy), \`${EVIDENCE_MEDIA_TYPE}\` (evidence).\n\nThe closed rule kinds are \`forbid-import-edge\`, \`require-import\`, \`restrict-call-site\`, and \`require-context-parameter\`. The closed message codes are \`PYTHON_IMPORT_DENIED\`, \`PYTHON_IMPORT_REQUIRED\`, \`PYTHON_CALL_RESTRICTED\`, \`PYTHON_CONTEXT_PARAMETER_REQUIRED\`, and \`PARSE_FAILURE\`. Source is parsed locally by CPython 3.11 through 3.14 using the standard-library AST; dynamic runtime behavior is not claimed.\n`],
   ["docs/contracts/README.md", `# Public contracts\n\nGenerated by \`npm run contracts:generate\`. Do not hand-edit generated files.\n\n## RepositoryPolicy v1\n\nMedia type: \`${REPOSITORY_POLICY_MEDIA_TYPE}\`\n\nA strict, non-executable repository policy. Unknown fields, unknown check kinds, path escapes, duplicate IDs, arbitrary regular-expression fields, and unsupported languages are rejected. Canonical policy bytes use RFC 8785 before SHA-256.\n\nThe closed check kinds are \`forbid-import-edge\`, \`require-import\`, \`restrict-call-site\`, \`require-export-keys\`, \`require-tenant-parameter\`, \`require-boundary-parse\`, \`require-governed-operation\`, \`require-context-parameter\`, \`require-closed-registry\`, \`restrict-property-write\`, \`require-call-argument\`, \`restrict-state-transition\`, and \`require-ingress-parse\`.
 
 \`layers\` is an optional map of at most 50 slug names (2 to 40 characters) to glob lists. Rule fields that name files (\`from\`, \`files\`, \`allowFrom\`, \`declarationFiles\`) may carry \`layer:<name>\` entries beside globs; the profile expands every reference to the layer's globs in declaration order, dropping duplicates and keeping the first occurrence, before the engine evaluates the policy. \`scope.include\` and \`scope.exclude\` accept globs only, and a layer value is a glob list, never another reference. A reference whose name is not a slug, a reference inside \`scope\`, or a reference to an undeclared layer is a schema error (validator exit 2). The policy digest is computed over the parsed document with its references intact, so a policy without \`layers\` keeps its digest byte for byte, and finding subjects and fingerprints never contain layer names.

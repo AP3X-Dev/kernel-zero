@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, type Dirent } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 

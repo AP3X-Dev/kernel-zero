@@ -36,8 +36,9 @@
     "validator:pack": "node -e \"require('fs').mkdirSync('dist',{recursive:true})\" && npm pack -w @kernel-zero/validator --pack-destination dist",
     "validator:package:check": "node scripts/check-validator-package.mjs",
     "validator:self": "vite-node scripts/run-validator.ts -- validate --policy kernel-zero.policy.json --root . --workspace 00000000-0000-7000-8000-000000000000 --out .kernel-zero/evidence.json",
+    "validator:python": "vite-node scripts/run-python-validator.ts -- kernel-zero.python.policy.json . 00000000-0000-7000-8000-000000000000 .kernel-zero/python-evidence.json",
     "validator:workflow": "vite-node scripts/run-workflow-validator.ts -- kernel-zero.workflow.policy.json . 00000000-0000-7000-8000-000000000000 .kernel-zero/workflow-evidence.json",
-    "verify": "npm run prisma:generate && npm run contracts:check && npm run check:architecture && npm run validator:self && npm run validator:workflow && npm run typecheck && npm run lint && npm run test:unit && npm run test:architecture && npm run test:integration"
+    "verify": "npm run prisma:generate && npm run contracts:check && npm run check:architecture && npm run validator:self && npm run validator:workflow && npm run validator:python && npm run typecheck && npm run lint && npm run test:unit && npm run test:architecture && npm run test:integration"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

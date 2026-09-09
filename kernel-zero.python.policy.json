@@ -1,0 +1,73 @@
+{
+  "apiVersion": "kernel-zero.dev/v1",
+  "kind": "PythonPolicy",
+  "metadata": {
+    "name": "python-analyzer-boundaries",
+    "revision": 1,
+    "description": "Govern the bundled CPython AST adapter with its own Python profile."
+  },
+  "scope": {
+    "include": [
+      "packages/profile-python/python-analyzer.py"
+    ],
+    "exclude": []
+  },
+  "rules": [
+    {
+      "id": "no-process-execution",
+      "title": "Python analyzer cannot launch processes",
+      "level": "error",
+      "check": {
+        "kind": "forbid-import-edge",
+        "from": [
+          "packages/profile-python/python-analyzer.py"
+        ],
+        "deny": [
+          "subprocess"
+        ]
+      },
+      "remediation": "Keep execution ownership in the Node runner."
+    },
+    {
+      "id": "required-ast-import",
+      "title": "Python analyzer uses CPython AST",
+      "level": "error",
+      "check": {
+        "kind": "require-import",
+        "files": [
+          "packages/profile-python/python-analyzer.py"
+        ],
+        "module": "ast"
+      },
+      "remediation": "Parse Python with the standard-library ast module."
+    },
+    {
+      "id": "no-dynamic-execution",
+      "title": "Python analyzer cannot dynamically execute source",
+      "level": "error",
+      "check": {
+        "kind": "restrict-call-site",
+        "callee": [
+          "eval",
+          "exec"
+        ],
+        "allowFrom": []
+      },
+      "remediation": "Inspect syntax through ast without evaluating source."
+    },
+    {
+      "id": "analysis-source-boundary",
+      "title": "Analysis entry point requires source",
+      "level": "error",
+      "check": {
+        "kind": "require-context-parameter",
+        "files": [
+          "packages/profile-python/python-analyzer.py"
+        ],
+        "symbols": "analyze",
+        "parameter": "source"
+      },
+      "remediation": "Keep source as an explicit required analysis input."
+    }
+  ]
+}

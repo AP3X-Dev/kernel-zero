@@ -77,7 +77,7 @@ describe("init", () => {
     const output = await init({ command: "init", root, workspace: WORKSPACE });
     expect(output).toContain("kernel-zero init wrote:");
     expect(output).toContain(`--workspace ${WORKSPACE}`);
-    expect(output).toContain("@kernel-zero/validator@0.1.0");
+    expect(output).toContain("@kernel-zero/validator@0.3.0");
     expect(output).toContain("## KERNEL ZERO enforcement");
     const written = await Promise.all(scaffoldTargets(root).map(async (target) => readFile(path.join(root, ...target.relative.split("/")), "utf8")));
     expect(written).toEqual(scaffoldTargets(root).map((target) => target.content));
