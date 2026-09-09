@@ -1,11 +1,12 @@
 import type { EvidenceFinding } from "@kernel-zero/contracts";
 
 import { resolvePolicyLayers } from "./layers";
-import type { RepositoryPolicy } from "./policy";
+import { CalleeGlobSchema, type RepositoryPolicy } from "./policy";
 
 const messageCodesByKind: Readonly<Record<RepositoryPolicy["rules"][number]["check"]["kind"], readonly string[]>> = Object.freeze({
   "forbid-import-edge": ["DENIED_IMPORT"],
   "require-boundary-parse": ["BOUNDARY_PARSE_REQUIRED"],
+  "require-call-argument": ["CALL_ARGUMENT_MISSING", "CALL_ARGUMENT_PROOF_FAILED"],
   "require-closed-registry": ["CLOSED_REGISTRY_ENTRY_INVALID", "UNREGISTERED_DECLARATION", "CLOSED_REGISTRY_PROOF_FAILED"],
   "require-context-parameter": ["CONTEXT_PARAMETER_INVALID", "CONTEXT_PARAMETER_PROOF_FAILED"],
   "require-export-keys": ["REQUIRED_EXPORT_KEY_MISSING"],
@@ -75,6 +76,15 @@ export function findingCompatibilityReason(unresolvedPolicy: RepositoryPolicy, f
         && (globMatches(qualifiedName, [check.symbols]) || globMatches(symbolName, [check.symbols]))
         ? null
         : "rule_subject_mismatch";
+    }
+    case "require-call-argument": {
+      const check = rule.check;
+      const body = stripPrefix(finding.subject, "call:");
+      const suffix = `:argument:${String(check.argument)}:${check.requiredPath}`;
+      if (!body?.endsWith(suffix)) return "rule_subject_mismatch";
+      // The unresolved case reports the glob itself, so a chain may carry `*` segments.
+      const chain = body.slice(0, -suffix.length);
+      return CalleeGlobSchema.safeParse(chain).success && globMatches(chain, check.callee) ? null : "rule_subject_mismatch";
     }
   }
 }

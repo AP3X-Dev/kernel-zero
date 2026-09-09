@@ -25,6 +25,10 @@ const ModuleDenialSchema = z.string().min(6).max(500).refine(
 );
 
 const IdentifierSchema = z.string().min(1).max(200).regex(/^[A-Za-z_$][\w$]*$/u, "Export names must be a single identifier.");
+/** A glob over a resolved callee chain such as `*.findMany` or `prisma.*.updateMany`; `*` spans dots. */
+export const CalleeGlobSchema = z.string().min(1).max(200).regex(/^[A-Za-z_$*][\w$*]*(?:\.[A-Za-z_$*][\w$*]*)*$/u, "Callee globs must be dotted identifier segments, each of which may contain *.");
+/** 1..8 identifier segments joined by `.`, such as `where.workspaceId`. */
+export const DottedPathSchema = z.string().min(1).max(200).regex(/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*){0,7}$/u, "Dotted paths must be 1 to 8 identifier segments.");
 const RelativeTypeScriptFileSchema = RelativeGlobSchema.refine(
   (value) => !/[*?[\]{}]/u.test(value) && /\.(?:ts|tsx)$/u.test(value),
   "Type files must be one exact contained TypeScript file, not a glob.",
@@ -70,6 +74,14 @@ export const PolicyCheckSchema = z.discriminatedUnion("kind", [
     targetType: z.strictObject({ file: RelativeTypeScriptFileSchema, exportName: IdentifierSchema }),
     property: IdentifierSchema,
     allowFrom: OptionalRuleGlobList,
+  }),
+  z.strictObject({
+    kind: z.literal("require-call-argument"),
+    files: RuleGlobList,
+    callee: uniqueArray(CalleeGlobSchema, 1, 100),
+    argument: z.number().int().min(0).max(9).default(0),
+    requiredPath: DottedPathSchema,
+    allowFrom: OptionalRuleGlobList.default([]),
   }),
 ]);
 

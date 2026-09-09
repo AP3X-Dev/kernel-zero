@@ -48,11 +48,21 @@ describe("RepositoryPolicy v1 contract", () => {
     ["property write dotted property", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-property-write", files: ["src/**"], targetType: { file: "src/job.ts", exportName: "Job" }, property: "a.b", allowFrom: [] } }] }],
     ["property write missing allowFrom", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-property-write", files: ["src/**"], targetType: { file: "src/job.ts", exportName: "Job" }, property: "status" } }] }],
     ["context intrinsic outside the closed set", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-context-parameter", files: ["apps/**"], symbols: "*", parameter: "ctx", expectedType: { kind: "intrinsic", name: "object" } } }] }],
+    ["call argument empty callee segment", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["db..findMany"], requiredPath: "where.workspaceId" } }] }],
+    ["call argument slash in callee", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["db/policy.findMany"], requiredPath: "where.workspaceId" } }] }],
+    ["call argument empty callee list", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: [], requiredPath: "where.workspaceId" } }] }],
+    ["call argument trailing dot in path", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where." } }] }],
+    ["call argument glob in path", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where.*" } }] }],
+    ["call argument nine path segments", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "a.b.c.d.e.f.g.h.i" } }] }],
+    ["call argument index above nine", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: 10, requiredPath: "where" } }] }],
+    ["call argument negative index", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: -1, requiredPath: "where" } }] }],
+    ["call argument fractional index", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: 0.5, requiredPath: "where" } }] }],
+    ["call argument unknown field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where", regex: ".*" } }] }],
   ])("rejects %s", (_label, value) => {
     expect(RepositoryPolicySchema.safeParse(value).success).toBe(false);
   });
 
-  it("accepts all ten closed check variants and rejects variant-only drift", () => {
+  it("accepts all eleven closed check variants and rejects variant-only drift", () => {
     const checks = [
       { kind: "forbid-import-edge", from: ["apps/**"], deny: ["module:x"] },
       { kind: "require-import", files: ["apps/**"], module: "server-only", allowTypeOnly: false },
@@ -67,6 +77,8 @@ describe("RepositoryPolicy v1 contract", () => {
       { kind: "require-closed-registry", registryFile: "src/tools/tool-policy.ts", registryExport: "TOOL_POLICY", declarationFiles: ["src/tools/**/*.ts"], declarationCalls: ["defineTool"], requiredKeys: ["classification", "authority", "approval"] },
       { kind: "restrict-property-write", files: ["src/**/*.ts"], targetType: { file: "src/domain/job.ts", exportName: "Job" }, property: "status", allowFrom: ["src/dataplane/state/**"] },
       { kind: "restrict-property-write", files: ["src/**/*.ts"], targetType: { file: "src/domain/job.ts", exportName: "Job" }, property: "status", allowFrom: [] },
+      { kind: "require-call-argument", files: ["packages/persistence/src/**/*.ts"], callee: ["*.findFirst", "*.findMany", "prisma.*.updateMany", "$db.count"], argument: 0, requiredPath: "where.workspaceId", allowFrom: ["packages/persistence/src/audit.ts"] },
+      { kind: "require-call-argument", files: ["src/**"], callee: ["*"], requiredPath: "a.b.c.d.e.f.g.h" },
     ];
     for (const [index, check] of checks.entries()) {
       const result = RepositoryPolicySchema.safeParse({
@@ -75,6 +87,14 @@ describe("RepositoryPolicy v1 contract", () => {
       });
       expect(result.success, JSON.stringify(result.error)).toBe(true);
     }
+  });
+
+  it("defaults require-call-argument's argument to 0 and allowFrom to []", () => {
+    const parsed = RepositoryPolicySchema.parse({
+      ...validPolicy,
+      rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where.workspaceId" } }],
+    });
+    expect(parsed.rules[0]?.check).toEqual({ kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: 0, requiredPath: "where.workspaceId", allowFrom: [] });
   });
 
   describe("layers", () => {

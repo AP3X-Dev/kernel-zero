@@ -86,6 +86,20 @@ describe("repository evidence contract", () => {
     expect(RepositoryEvidenceSchema.safeParse({ ...original, findings: [{ ...originalFinding, message: "arbitrary" }] }).success).toBe(false);
   });
 
+  it("publishes the call-argument codes with their exact messages and accepts them in findings", () => {
+    expect(findingMessage("CALL_ARGUMENT_MISSING")).toBe("A call to a governed operation omits a required argument field.");
+    expect(findingMessage("CALL_ARGUMENT_PROOF_FAILED")).toBe("A call to a governed operation could not be proven to carry a required argument field.");
+    const original = validEvidence();
+    const finding = onlyFinding(original);
+    for (const messageCode of ["CALL_ARGUMENT_MISSING", "CALL_ARGUMENT_PROOF_FAILED"] as const) {
+      const subject = "call:tx.policyRevision.findFirst:argument:0:where.workspaceId";
+      const identity = findingIdentity({ location, messageCode, path: finding.path, policyDigest: original.policy.digest, ruleId: finding.ruleId, subject });
+      const rewritten = { ...finding, ...identity, message: findingMessage(messageCode), messageCode, subject };
+      const base = { ...original, findings: [rewritten] };
+      expect(RepositoryEvidenceSchema.safeParse({ ...base, integrity: { algorithm: "sha256", digest: canonicalEvidenceDigest(base) } }).success).toBe(true);
+    }
+  });
+
   it("excludes run metadata and diagnostic duration from integrity", () => {
     const original = validEvidence();
     expect(canonicalEvidenceDigest({ ...original, runId: "0195f000-0000-7000-8000-000000000099" })).toBe(original.integrity.digest);

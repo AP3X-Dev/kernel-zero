@@ -29,7 +29,10 @@ export type RawFindingMessageCode =
   | "CLOSED_REGISTRY_PROOF_FAILED"
   | "PROPERTY_WRITE_DENIED"
   | "PROPERTY_WRITE_UNRESOLVED"
-  | "PROPERTY_TARGET_UNRESOLVED";
+  | "PROPERTY_TARGET_UNRESOLVED"
+  | "CALL_ARGUMENT_MISSING"
+  | "CALL_ARGUMENT_UNPROVABLE"
+  | "CALL_ARGUMENT_UNRESOLVED";
 
 export interface RawFindingLocation {
   readonly startLine: number;

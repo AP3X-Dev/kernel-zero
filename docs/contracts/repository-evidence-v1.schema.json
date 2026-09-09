@@ -143,6 +143,8 @@
           "type": "string",
           "enum": [
             "BOUNDARY_PARSE_REQUIRED",
+            "CALL_ARGUMENT_MISSING",
+            "CALL_ARGUMENT_PROOF_FAILED",
             "CLOSED_REGISTRY_ENTRY_INVALID",
             "CLOSED_REGISTRY_PROOF_FAILED",
             "CONTEXT_PARAMETER_INVALID",

@@ -41,6 +41,32 @@ is computed and before evaluation, so subjects, fingerprints, and the digest
 of a layer-free policy are unchanged. An undeclared or malformed reference, or
 one placed in `scope`, is a policy contract failure (exit `2`).
 
+## Required call arguments
+
+The self-policy rule `tenant-queries-carry-workspace` uses
+`require-call-argument` to prove that every `*.findFirst`, `*.findMany`,
+`*.updateMany`, `*.deleteMany`, and `*.count` call in `layer:persistence`
+carries `where.workspaceId` in its first argument; `audit.ts` is the only
+`allowFrom` file because audit rows are keyed by `workspaceOpaqueId`.
+
+```json
+"check": {
+  "kind": "require-call-argument",
+  "files": ["layer:persistence"],
+  "callee": ["*.findFirst", "*.findMany", "*.updateMany", "*.deleteMany", "*.count"],
+  "argument": 0,
+  "requiredPath": "where.workspaceId",
+  "allowFrom": ["packages/persistence/src/audit.ts"]
+}
+```
+
+Deleting one `workspaceId` from a selector fails the gate with
+`CALL_ARGUMENT_MISSING` at the call; a selector the validator cannot prove
+(an opaque spread, a value built elsewhere, a receiver typed `any`) fails with
+`CALL_ARGUMENT_PROOF_FAILED`. `findUnique` is not listed: compound-unique
+selectors carry the tenant key inside the unique-key object, which the
+composite index already scopes.
+
 ## Agent-facing commands
 
 `kernel-zero explain --policy|--evidence <file>` renders one strictly parsed

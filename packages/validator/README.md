@@ -61,6 +61,32 @@ as written, so a policy without `layers` keeps its digest.
 A reference to an undeclared layer, a non-slug name, or a reference inside
 `scope` fails policy parsing with exit `2`.
 
+## Required call arguments
+
+`require-call-argument` proves that every call whose resolved callee matches
+a glob carries a dotted path in one argument, so a tenant identifier cannot be
+dropped from a query selector. Proof is static: an object literal, an
+`Object.freeze` of one, or a same-file `const` bound to one, with no opaque
+spread or computed key on the path. Anything the validator cannot prove is
+`CALL_ARGUMENT_PROOF_FAILED`; a provable selector without the path is
+`CALL_ARGUMENT_MISSING`.
+
+```json
+{
+  "id": "tenant-queries-carry-workspace",
+  "title": "Tenant queries carry the workspace identifier",
+  "level": "error",
+  "check": {
+    "kind": "require-call-argument",
+    "files": ["layer:persistence"],
+    "callee": ["*.findFirst", "*.findMany", "*.updateMany", "*.deleteMany", "*.count"],
+    "requiredPath": "where.workspaceId",
+    "allowFrom": ["src/persistence/audit.ts"]
+  },
+  "remediation": "Put workspaceId in the where selector of every tenant-scoped query."
+}
+```
+
 ## Explain and init
 
 ```text

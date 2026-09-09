@@ -3,6 +3,8 @@ import { z } from "zod";
 
 export const FINDING_MESSAGE_CODES = Object.freeze([
   "BOUNDARY_PARSE_REQUIRED",
+  "CALL_ARGUMENT_MISSING",
+  "CALL_ARGUMENT_PROOF_FAILED",
   "CLOSED_REGISTRY_ENTRY_INVALID",
   "CLOSED_REGISTRY_PROOF_FAILED",
   "CONTEXT_PARAMETER_INVALID",
@@ -23,6 +25,8 @@ export type FindingMessageCode = (typeof FINDING_MESSAGE_CODES)[number];
 
 const messages: Readonly<Record<FindingMessageCode, string>> & EvidenceMessages = Object.freeze({
   BOUNDARY_PARSE_REQUIRED: "A public boundary value is not proven to be parsed.",
+  CALL_ARGUMENT_MISSING: "A call to a governed operation omits a required argument field.",
+  CALL_ARGUMENT_PROOF_FAILED: "A call to a governed operation could not be proven to carry a required argument field.",
   CLOSED_REGISTRY_ENTRY_INVALID: "A closed registry entry is missing required metadata or has an invalid identifier.",
   CLOSED_REGISTRY_PROOF_FAILED: "The closed registry invariant could not be proven from static declarations.",
   CONTEXT_PARAMETER_INVALID: "A required context parameter is missing or has a disallowed declaration.",

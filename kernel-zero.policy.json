@@ -199,6 +199,30 @@
         ]
       },
       "remediation": "Keep the validator on contracts, domain, and its profile."
+    },
+    {
+      "id": "tenant-queries-carry-workspace",
+      "title": "Tenant queries carry the workspace identifier",
+      "level": "error",
+      "check": {
+        "kind": "require-call-argument",
+        "files": [
+          "layer:persistence"
+        ],
+        "callee": [
+          "*.findFirst",
+          "*.findMany",
+          "*.updateMany",
+          "*.deleteMany",
+          "*.count"
+        ],
+        "argument": 0,
+        "requiredPath": "where.workspaceId",
+        "allowFrom": [
+          "packages/persistence/src/audit.ts"
+        ]
+      },
+      "remediation": "Put workspaceId in the where selector of every tenant-scoped query so a sibling tenant's rows are never reachable."
     }
   ]
 }

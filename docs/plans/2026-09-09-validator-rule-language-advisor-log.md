@@ -53,3 +53,6 @@ Session `autonomous-validator-rule-language-2026-09-09`. Every decision and ever
 
 ### Verdict 7: kz-checker on step 1 (named layers)
 **Verdict:** PASS; all five implementer deviations judged acceptable (exactOptional for the digest type, layer values reject nested references, message carries rule id and field, shared ruleFileLists export, expander throws on an unseen reference).
+
+### Verdict 8: kz-checker on step 2 (require-call-argument)
+**Verdict:** PASS; both bites reproduced; three deviations acceptable; two follow-ups filed in the run-state (F1 digest EOL portability, F2 bare-identifier alias ceiling).

@@ -1,6 +1,7 @@
 import { isLayerReference, ruleFileLists, type RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
 
 import { evaluateBoundaryParses } from "./checks/boundary";
+import { evaluateCallArguments } from "./checks/call-argument";
 import { evaluateRestrictedCalls } from "./checks/calls";
 import { evaluateContextParameters } from "./checks/context";
 import { evaluateExportKeys } from "./checks/exports";
@@ -96,6 +97,9 @@ function evaluateRule(
     case "restrict-property-write":
       evaluatePropertyWrites({ ...rule, check: rule.check }, repository, failedPaths, findings);
       return;
+    case "require-call-argument":
+      evaluateCallArguments({ ...rule, check: rule.check }, repository, failedPaths, findings);
+      return;
   }
 }
 
@@ -113,6 +117,7 @@ function ruleClaimsPath(check: PolicyCheck, filePath: string): boolean {
     case "require-tenant-parameter":
     case "require-boundary-parse":
     case "require-governed-operation":
+    case "require-call-argument":
       return check.files.some((glob) => matchesGlob(filePath, glob));
     case "restrict-property-write":
       return check.targetType.file === filePath || check.files.some((glob) => matchesGlob(filePath, glob));

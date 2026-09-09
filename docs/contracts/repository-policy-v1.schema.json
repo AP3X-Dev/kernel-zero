@@ -522,6 +522,49 @@
                 "allowFrom"
               ],
               "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "require-call-argument"
+                },
+                "files": {
+                  "$ref": "#/$defs/__schema5"
+                },
+                "callee": {
+                  "minItems": 1,
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema20"
+                  }
+                },
+                "argument": {
+                  "default": 0,
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9
+                },
+                "requiredPath": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*){0,7}$"
+                },
+                "allowFrom": {
+                  "default": [],
+                  "$ref": "#/$defs/__schema7"
+                }
+              },
+              "required": [
+                "kind",
+                "files",
+                "callee",
+                "requiredPath"
+              ],
+              "additionalProperties": false
             }
           ]
         },
@@ -576,6 +619,12 @@
       "minLength": 1,
       "maxLength": 200,
       "pattern": "^[A-Za-z_$][\\w$]*$"
+    },
+    "__schema20": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z_$*][\\w$*]*(?:\\.[A-Za-z_$*][\\w$*]*)*$"
     }
   }
 }

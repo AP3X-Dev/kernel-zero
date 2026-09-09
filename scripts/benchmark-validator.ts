@@ -29,6 +29,12 @@ const policy = {
     level: "error",
     remediation: "Use a repository boundary.",
     title: "No raw database client",
+  }, {
+    check: { callee: ["*.findMany"], files: ["src/**/*.ts"], kind: "require-call-argument", requiredPath: "where.workspaceId" },
+    id: "tenant-queries-carry-workspace",
+    level: "error",
+    remediation: "Add where.workspaceId to the selector.",
+    title: "Tenant queries carry the workspace",
   }],
   scope: { exclude: [], include: ["src/**/*.ts"], languages: ["typescript"] },
 };

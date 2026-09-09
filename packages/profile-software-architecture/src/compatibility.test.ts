@@ -9,6 +9,8 @@ const REG = { declarationCalls: ["defineTool"], declarationFiles: ["src/tools/**
 
 const PW = { allowFrom: ["src/dataplane/state/**"], files: ["src/**/*.ts"], kind: "restrict-property-write", property: "status", targetType: { exportName: "Job", file: "src/domain/job.ts" } };
 
+const CA = { allowFrom: ["src/audit.ts"], argument: 0, callee: ["*.findFirst", "db.policy.*"], files: ["src/**/*.ts"], kind: "require-call-argument", requiredPath: "where.workspaceId" };
+
 const checkCases: readonly Readonly<{
   check: Record<string, unknown>;
   code: FindingMessageCode;
@@ -31,6 +33,10 @@ const checkCases: readonly Readonly<{
   { check: REG, code: "CLOSED_REGISTRY_PROOF_FAILED", subject: "registry:TOOL_POLICY:proof:search" },
   { check: PW, code: "PROPERTY_WRITE_DENIED", subject: "property:src/domain/job.ts#Job.status" },
   { check: PW, code: "PROPERTY_WRITE_PROOF_FAILED", subject: "property:src/domain/job.ts#Job.status" },
+  { check: CA, code: "CALL_ARGUMENT_MISSING", subject: "call:tx.policyRevision.findFirst:argument:0:where.workspaceId" },
+  { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:db.policy.findMany:argument:0:where.workspaceId" },
+  { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:db.policy.*:argument:0:where.workspaceId" },
+  { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:*.findFirst:argument:0:where.workspaceId" },
 ];
 
 function policy(check: Record<string, unknown>) {
@@ -96,6 +102,25 @@ describe("evidence rule compatibility", () => {
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_DENIED", "property:src/domain/job.ts#Job.retries"))).toBe("rule_subject_mismatch");
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_DENIED", "property:src/domain/task.ts#Job.status"))).toBe("rule_subject_mismatch");
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_PROOF_FAILED", "property:src/domain/job.ts#Task.status"))).toBe("rule_subject_mismatch");
+  });
+
+  it("rejects call-argument subjects with another index, path, or a chain outside the callee globs", () => {
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:1:where.workspaceId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:0:where.tenantId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_MISSING", "call:db.other.findMany:argument:0:where.workspaceId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_PROOF_FAILED", "call:db.policy.findMany/x:argument:0:where.workspaceId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_PROOF_FAILED", "call::argument:0:where.workspaceId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("RESTRICTED_CALL", "db.policy.findMany"))).toBe("rule_code_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:0:where.workspaceId"))).toBeNull();
+    const layered = RepositoryPolicySchema.parse({
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "RepositoryPolicy",
+      layers: { persistence: ["src/persistence/**/*.ts"] },
+      metadata: { description: "Policy", name: "policy", revision: 1 },
+      rules: [{ check: { ...CA, allowFrom: [], files: ["layer:persistence"] }, id: "test-rule", level: "error", remediation: "Fix it.", title: "Test" }],
+      scope: { exclude: [], include: ["**/*.ts"], languages: ["typescript"] },
+    });
+    expect(findingCompatibilityReason(layered, finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:0:where.workspaceId"))).toBeNull();
   });
 
   it("resolves layer references before matching so a layered rule accepts its finding", () => {

@@ -211,5 +211,8 @@ function publicMessageCode(code: RawFindingMessageCode): FindingMessageCode {
     case "PROPERTY_WRITE_DENIED": return "PROPERTY_WRITE_DENIED";
     case "PROPERTY_WRITE_UNRESOLVED":
     case "PROPERTY_TARGET_UNRESOLVED": return "PROPERTY_WRITE_PROOF_FAILED";
+    case "CALL_ARGUMENT_MISSING": return "CALL_ARGUMENT_MISSING";
+    case "CALL_ARGUMENT_UNPROVABLE":
+    case "CALL_ARGUMENT_UNRESOLVED": return "CALL_ARGUMENT_PROOF_FAILED";
   }
 }

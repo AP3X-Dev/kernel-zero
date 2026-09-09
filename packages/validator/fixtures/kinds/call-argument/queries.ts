@@ -1,0 +1,21 @@
+declare const db: { policy: { findMany(a: unknown): void; updateMany(a: unknown): void }; other: { findMany(a: unknown): void } };
+declare const workspaceId: string;
+declare const flag: boolean;
+declare function buildSelector(): unknown;
+declare const base: object;
+declare const key: string;
+
+db.policy.findMany({ where: { workspaceId } });
+db.policy.findMany({ where: { status: "x" } });
+const selector = { where: { workspaceId } };
+db.policy.findMany(selector);
+db.policy.findMany({ where: { workspaceId, ...(flag ? {} : { status: "x" }) } });
+db.policy.findMany({ where: { ...base, workspaceId } });
+db.policy.findMany({ where: { workspaceId, ...base } });
+db.policy.findMany({ where: { ...base } });
+db.policy.findMany({ where: { workspaceId: undefined } });
+db.policy.findMany(buildSelector());
+(db as any).policy.findMany({ where: { workspaceId } });
+db.other.findMany({});
+db["policy"].findMany({});
+db[key].findMany({});
