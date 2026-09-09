@@ -1,6 +1,6 @@
 {
   "name": "@kernel-zero/validator",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Network-free deterministic architecture policy validator for KERNEL ZERO.",
   "license": "MIT",
   "type": "module",

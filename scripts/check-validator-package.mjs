@@ -15,28 +15,20 @@ const expectedContractFiles = [
   "examples/exception-grant-set-v1.json",
   "examples/manifest-evidence-v1.json",
   "examples/manifest-policy-v1.json",
-  "examples/policy-approval-v1.json",
-  "examples/policy-custody-evidence-v1.json",
   "examples/python-evidence-v1.json",
   "examples/python-policy-v1.json",
   "examples/repository-evidence-v1.json",
   "examples/repository-policy-v1.json",
   "examples/workflow-evidence-v1.json",
   "examples/workflow-policy-v1.json",
-  "examples/workspace-trust-bundle-v1.json",
   "exception-grant-set-v1.schema.json",
   "malformed/exception-grant-set-private-data.json",
-  "malformed/policy-approval-unknown-field.json",
-  "malformed/policy-custody-evidence-wall-clock.json",
   "malformed/python-policy-unknown-field.json",
   "malformed/repository-evidence-source-content.json",
   "malformed/repository-policy-path-escape.json",
   "malformed/repository-policy-unknown-field.json",
-  "malformed/workspace-trust-bundle-unsorted-keys.json",
   "manifest-evidence-v1.schema.json",
   "manifest-policy-v1.schema.json",
-  "policy-approval-v1.schema.json",
-  "policy-custody-evidence-v1.schema.json",
   "python-evidence-v1.schema.json",
   "python-policy-v1.schema.json",
   "python-profile-v1.md",
@@ -44,7 +36,6 @@ const expectedContractFiles = [
   "repository-policy-v1.schema.json",
   "workflow-evidence-v1.schema.json",
   "workflow-policy-v1.schema.json",
-  "workspace-trust-bundle-v1.schema.json",
 ];
 
 const expectedPackageFiles = [
@@ -346,7 +337,7 @@ async function listFiles(directory, prefix = "") {
 function assertManifest(manifest) {
   const failures = [];
   if (manifest.name !== "@kernel-zero/validator") failures.push("name");
-  if (manifest.version !== "0.2.0") failures.push("version");
+  if (manifest.version !== "0.3.0") failures.push("version");
   if (manifest.private !== undefined) failures.push("private");
   if (manifest.exports !== undefined) failures.push("exports");
   if (manifest.optionalDependencies !== undefined) failures.push("optionalDependencies");

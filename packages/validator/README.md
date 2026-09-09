@@ -2,7 +2,7 @@
 
 The KERNEL ZERO validator is a deterministic, network-free command-line checker
 for versioned repository, package-manifest, Python, and workflow policies.
-Version `0.2.0` provides four CLI executables and intentionally has no JavaScript
+Version `0.3.0` provides four CLI executables, named policy layers, and the `require-call-argument`, `restrict-state-transition`, and `require-ingress-parse` check kinds, and intentionally has no JavaScript
 library API. Everything needed at runtime is bundled; consumers do not need the
 KERNEL ZERO repository or its workspace packages.
 
