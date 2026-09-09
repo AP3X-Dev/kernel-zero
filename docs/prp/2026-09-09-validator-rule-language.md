@@ -19,10 +19,14 @@ clock, or runtime instrumentation:
 5. A given function cannot be called from named architectural layers.
 6. Code from any author, human or agent, must satisfy all of the above before merge.
 
-Sentences 1, 5, and 6 are already satisfied (`forbid-import-edge`,
-`restrict-call-site`, and the protected `verify` check on `main`). This PRP
-delivers the rest by adding one policy-level concept (named layers) and three
-check kinds, and by making the repository's own policy use every one of them.
+Sentences 1 and 6 are already satisfied (`forbid-import-edge` and the
+protected `verify` check on `main`). Sentence 5 has its check kind
+(`restrict-call-site`) but, as the final checker found on 2026-09-09, the
+self-policy carried no rule of that kind; this PRP therefore also adds one
+(`runtime-opens-at-the-boundary`, allowing `getRuntime` only from
+`layer:transport` and the page route context). This PRP delivers the rest by
+adding one policy-level concept (named layers) and three check kinds, and by
+making the repository's own policy use every one of them.
 
 ## 2. Product principles
 

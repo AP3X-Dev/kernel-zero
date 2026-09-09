@@ -369,6 +369,22 @@
         ]
       },
       "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "runtime-opens-at-the-boundary",
+      "title": "The runtime is opened only where a request enters",
+      "level": "error",
+      "check": {
+        "kind": "restrict-call-site",
+        "callee": [
+          "getRuntime"
+        ],
+        "allowFrom": [
+          "layer:transport",
+          "apps/control/src/app/app/route-context.ts"
+        ]
+      },
+      "remediation": "Receive the runtime (or its prisma client and config) as a parameter from the route or page context instead of opening it inside a service or view."
     }
   ]
 }

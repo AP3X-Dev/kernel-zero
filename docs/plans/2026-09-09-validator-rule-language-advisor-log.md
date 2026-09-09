@@ -67,3 +67,10 @@ Session `autonomous-validator-rule-language-2026-09-09`. Every decision and ever
 
 ### Verdict 10: kz-checker on step 4 (require-ingress-parse)
 **Verdict:** PASS; three bites reproduced; all nine deviations acceptable (method-call receivers carrying untrusted is sound and produces no false escape on the route); browser suite 12 passed.
+
+### Verdict 11: kz-checker final gate (step 5)
+**Verdict:** PASS on every executable gate; SC-V01 sentence-5 clause had no target because the PRP's premise (an existing restrict-call-site self-policy rule) was false.
+
+### Decision 8: satisfy sentence 5 instead of weakening SC-V01 (orchestrator, advisor role)
+**Decided:** add self-policy rule `runtime-opens-at-the-boundary` (restrict-call-site, callee getRuntime, allowFrom layer:transport plus the page route context), prove it bites, correct the PRP premise in section 1, record the digest in the layers ADR addendum.
+**Reasoning:** PRP section 1 intends all six sentences to be rules in the self-policy and section 2 item 4 forbids an unexercised kind; adding the rule fulfils the intent without new scope, whereas deleting the clause would weaken a success criterion to pass it.

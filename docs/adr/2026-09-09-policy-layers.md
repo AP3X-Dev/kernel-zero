@@ -187,3 +187,18 @@ unit         Test Files 46 passed (46)   Tests 287 passed (287)
 architecture Test Files 1 passed (1)     Tests 1 passed (1)
 integration  Test Files 3 passed (3)     Tests 7 passed (7)
 ```
+
+## Addendum (2026-09-09, final checker finding): sentence 5 dogfood rule
+
+The PRP claimed sentence 5 ("a function cannot be called from named layers") was
+already covered by a `restrict-call-site` rule in the self-policy. No such rule
+existed. Rule `runtime-opens-at-the-boundary` was added: `getRuntime` may be
+called only from `layer:transport` and `apps/control/src/app/app/route-context.ts`,
+so services and views receive the runtime rather than opening it.
+
+- Bite proof: a probe `export function probeRuntime() { return getRuntime(); }`
+  appended to `apps/control/src/server/policy/policy-service.ts` produced
+  `kernel-zero: fail (1 errors, 0 warnings, 0 excepted, 96 files)` /
+  `error runtime-opens-at-the-boundary apps/control/src/server/policy/policy-service.ts:76:41 RESTRICTED_CALL getRuntime`, exit 1; restored from a byte copy, exit 0.
+- Self-policy integrity digest: `sha256:b28247eb5fc05949c27daf27a042a17321218ba3eb0cf0160dd5a0ba9f39af37` before, `sha256:f7010c9acca6e98fabaa77e35952f5972d8d82208d2269020f4ad68ecfbe6998` after, identical on two runs; 17 rules.
+- Contract impact: none (existing kind, existing codes). FR-IDs: FR-LAY-005, FR-DOG-001.
