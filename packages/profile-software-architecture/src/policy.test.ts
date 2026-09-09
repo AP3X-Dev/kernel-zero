@@ -48,11 +48,38 @@ describe("RepositoryPolicy v1 contract", () => {
     ["property write dotted property", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-property-write", files: ["src/**"], targetType: { file: "src/job.ts", exportName: "Job" }, property: "a.b", allowFrom: [] } }] }],
     ["property write missing allowFrom", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-property-write", files: ["src/**"], targetType: { file: "src/job.ts", exportName: "Job" }, property: "status" } }] }],
     ["context intrinsic outside the closed set", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-context-parameter", files: ["apps/**"], symbols: "*", parameter: "ctx", expectedType: { kind: "intrinsic", name: "object" } } }] }],
+    ["call argument empty callee segment", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["db..findMany"], requiredPath: "where.workspaceId" } }] }],
+    ["call argument slash in callee", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["db/policy.findMany"], requiredPath: "where.workspaceId" } }] }],
+    ["call argument empty callee list", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: [], requiredPath: "where.workspaceId" } }] }],
+    ["call argument trailing dot in path", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where." } }] }],
+    ["call argument glob in path", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where.*" } }] }],
+    ["call argument nine path segments", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "a.b.c.d.e.f.g.h.i" } }] }],
+    ["call argument index above nine", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: 10, requiredPath: "where" } }] }],
+    ["call argument negative index", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: -1, requiredPath: "where" } }] }],
+    ["call argument fractional index", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: 0.5, requiredPath: "where" } }] }],
+    ["call argument unknown field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where", regex: ".*" } }] }],
+    ["state transition missing field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"] } }] }],
+    ["state transition glob in field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.*" } }] }],
+    ["state transition empty callee list", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: [], field: "data.state" } }] }],
+    ["state transition dotted from", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "a.b", to: "c" }] } }] }],
+    ["state transition wildcard to", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "*" }] } }] }],
+    ["state transition empty to", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "" }] } }] }],
+    ["state transition extra pair key", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "approved", via: "x" }] } }] }],
+    ["state transition duplicate pair", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", transitions: [{ from: "draft", to: "approved" }, { from: "draft", to: "approved" }] } }] }],
+    ["state transition index above nine", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", argument: 10 } }] }],
+    ["state transition unknown field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state", files: ["src/**"] } }] }],
+    ["ingress parse missing parser calls", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST" } }] }],
+    ["ingress parse empty parser list", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: [] } }] }],
+    ["ingress parse empty symbols", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "", parserCalls: ["parse"] } }] }],
+    ["ingress parse duplicate reader", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"], readerCalls: ["read", "read"] } }] }],
+    ["ingress parse empty allowed entry", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"], allowedCalls: [""] } }] }],
+    ["ingress parse unknown field", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"], callee: ["x"] } }] }],
+    ["ingress parse empty files", { ...validPolicy, rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: [], symbols: "POST", parserCalls: ["parse"] } }] }],
   ])("rejects %s", (_label, value) => {
     expect(RepositoryPolicySchema.safeParse(value).success).toBe(false);
   });
 
-  it("accepts all ten closed check variants and rejects variant-only drift", () => {
+  it("accepts all thirteen closed check variants and rejects variant-only drift", () => {
     const checks = [
       { kind: "forbid-import-edge", from: ["apps/**"], deny: ["module:x"] },
       { kind: "require-import", files: ["apps/**"], module: "server-only", allowTypeOnly: false },
@@ -67,6 +94,12 @@ describe("RepositoryPolicy v1 contract", () => {
       { kind: "require-closed-registry", registryFile: "src/tools/tool-policy.ts", registryExport: "TOOL_POLICY", declarationFiles: ["src/tools/**/*.ts"], declarationCalls: ["defineTool"], requiredKeys: ["classification", "authority", "approval"] },
       { kind: "restrict-property-write", files: ["src/**/*.ts"], targetType: { file: "src/domain/job.ts", exportName: "Job" }, property: "status", allowFrom: ["src/dataplane/state/**"] },
       { kind: "restrict-property-write", files: ["src/**/*.ts"], targetType: { file: "src/domain/job.ts", exportName: "Job" }, property: "status", allowFrom: [] },
+      { kind: "require-call-argument", files: ["packages/persistence/src/**/*.ts"], callee: ["*.findFirst", "*.findMany", "prisma.*.updateMany", "$db.count"], argument: 0, requiredPath: "where.workspaceId", allowFrom: ["packages/persistence/src/audit.ts"] },
+      { kind: "require-call-argument", files: ["src/**"], callee: ["*"], requiredPath: "a.b.c.d.e.f.g.h" },
+      { kind: "restrict-state-transition", callee: ["*.policyRevision.updateMany"], argument: 0, field: "data.state", allowFrom: ["packages/persistence/src/policies.ts"], transitions: [{ from: "draft", to: "approved" }, { from: "*", to: "superseded" }] },
+      { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "state" },
+      { kind: "require-ingress-parse", files: ["apps/control/src/app/api/**/*.ts"], symbols: "POST", parserCalls: ["readEvidenceRequest"], readerCalls: ["dependencies.resolveSubmission"], allowedCalls: ["dependencies.service.submit", "errorResponse"] },
+      { kind: "require-ingress-parse", files: ["src/**"], symbols: "*", parserCalls: ["Schema.parse"], readerCalls: [], allowedCalls: [] },
     ];
     for (const [index, check] of checks.entries()) {
       const result = RepositoryPolicySchema.safeParse({
@@ -75,5 +108,78 @@ describe("RepositoryPolicy v1 contract", () => {
       });
       expect(result.success, JSON.stringify(result.error)).toBe(true);
     }
+  });
+
+  it("defaults require-call-argument's argument to 0 and allowFrom to []", () => {
+    const parsed = RepositoryPolicySchema.parse({
+      ...validPolicy,
+      rules: [{ ...validPolicy.rules[0], check: { kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], requiredPath: "where.workspaceId" } }],
+    });
+    expect(parsed.rules[0]?.check).toEqual({ kind: "require-call-argument", files: ["src/**"], callee: ["*.findMany"], argument: 0, requiredPath: "where.workspaceId", allowFrom: [] });
+  });
+
+  it("defaults restrict-state-transition's argument to 0, allowFrom to [], and transitions to []", () => {
+    const parsed = RepositoryPolicySchema.parse({
+      ...validPolicy,
+      rules: [{ ...validPolicy.rules[0], check: { kind: "restrict-state-transition", callee: ["*.updateMany"], field: "data.state" } }],
+    });
+    expect(parsed.rules[0]?.check).toEqual({ kind: "restrict-state-transition", callee: ["*.updateMany"], argument: 0, field: "data.state", allowFrom: [], transitions: [] });
+  });
+
+  it("defaults require-ingress-parse's readerCalls and allowedCalls to []", () => {
+    const parsed = RepositoryPolicySchema.parse({
+      ...validPolicy,
+      rules: [{ ...validPolicy.rules[0], check: { kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"] } }],
+    });
+    expect(parsed.rules[0]?.check).toEqual({ kind: "require-ingress-parse", files: ["src/**"], symbols: "POST", parserCalls: ["parse"], readerCalls: [], allowedCalls: [] });
+  });
+
+  describe("layers", () => {
+    const extraLayers = (count: number) => Object.fromEntries(Array.from({ length: count }, (_, index) => [`layer-${String(index)}`, ["apps/**"]]));
+    const layeredRule = { ...validPolicy.rules[0], check: { kind: "forbid-import-edge", from: ["layer:ui", "packages/**"], deny: ["module:@prisma/client"] } };
+    const layered = {
+      ...validPolicy,
+      layers: { ui: ["apps/control/src/app/**/page.tsx"], service: ["apps/control/src/server/**/*.ts"] },
+      rules: [layeredRule],
+    };
+
+    it("accepts declared layers and keeps references unexpanded in the parsed document", () => {
+      expect(RepositoryPolicySchema.parse(layered)).toEqual(layered);
+    });
+
+    it("parses a policy without layers to the same object with no layers key", () => {
+      const parsed = RepositoryPolicySchema.parse(validPolicy);
+      expect(parsed).toEqual(validPolicy);
+      expect("layers" in parsed).toBe(false);
+    });
+
+    it.each([
+      ["malformed reference", { ...layered, rules: [{ ...layeredRule, check: { ...layeredRule.check, from: ["layer:UI_Layer"] } }] }, "Layer reference is not a slug: layer:UI_Layer"],
+      ["reference in scope include", { ...layered, scope: { ...layered.scope, include: ["layer:ui"] } }, "Layer reference is not allowed in scope: layer:ui"],
+      ["reference in scope exclude", { ...layered, scope: { ...layered.scope, exclude: ["layer:ui"] } }, "Layer reference is not allowed in scope: layer:ui"],
+      ["undeclared reference", { ...layered, rules: [{ ...layeredRule, check: { ...layeredRule.check, from: ["layer:ghost"] } }] }, "Layer is not declared: ghost (rule layers-no-ui-db, field from)"],
+      ["reference without a layers block", { ...validPolicy, rules: layered.rules }, "Layer is not declared: ui (rule layers-no-ui-db, field from)"],
+      ["undeclared allowFrom reference", { ...layered, rules: [{ ...layeredRule, check: { kind: "restrict-property-write", files: ["layer:ui"], targetType: { file: "src/job.ts", exportName: "Job" }, property: "status", allowFrom: ["layer:data"] } }] }, "Layer is not declared: data (rule layers-no-ui-db, field allowFrom)"],
+    ])("rejects a %s with the exact message", (_label, value, message) => {
+      const result = RepositoryPolicySchema.safeParse(value);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map((issue) => issue.message)).toEqual([message]);
+    });
+
+    it.each([
+      ["a non-slug layer name", { ...layered, layers: { ...layered.layers, "Bad Name": ["apps/**"] } }],
+      ["a one-character layer name", { ...layered, layers: { ...layered.layers, a: ["apps/**"] } }],
+      ["an empty layer", { ...layered, layers: { ...layered.layers, empty: [] } }],
+      ["a layer containing a reference", { ...layered, layers: { ...layered.layers, nested: ["layer:ui"] } }],
+      ["51 layers", { ...layered, layers: { ...layered.layers, ...extraLayers(49) } }],
+    ])("rejects %s", (_label, value) => {
+      expect(RepositoryPolicySchema.safeParse(value).success).toBe(false);
+    });
+
+    it("accepts 50 layers", () => {
+      const layers = { ...layered.layers, ...extraLayers(48) };
+      expect(Object.keys(layers)).toHaveLength(50);
+      expect(RepositoryPolicySchema.safeParse({ ...layered, layers }).success).toBe(true);
+    });
   });
 });

@@ -1,13 +1,16 @@
-import type { RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
+import { isLayerReference, ruleFileLists, type RepositoryPolicy } from "@kernel-zero/profile-software-architecture";
 
 import { evaluateBoundaryParses } from "./checks/boundary";
+import { evaluateCallArguments } from "./checks/call-argument";
 import { evaluateRestrictedCalls } from "./checks/calls";
 import { evaluateContextParameters } from "./checks/context";
 import { evaluateExportKeys } from "./checks/exports";
 import { evaluateGovernedOperations } from "./checks/governed";
 import { evaluateForbiddenImports, evaluateRequiredImports } from "./checks/imports";
+import { evaluateIngressParses } from "./checks/ingress";
 import { evaluatePropertyWrites } from "./checks/property-write";
 import { evaluateClosedRegistry } from "./checks/registry";
+import { evaluateStateTransitions } from "./checks/state-transition";
 import { evaluateTenantParameters } from "./checks/tenant";
 import {
   compareFindings,
@@ -18,12 +21,16 @@ import {
   type PolicyRule,
   type RawValidatorFinding,
 } from "./findings";
-import type { RepositoryProgram } from "./program";
+import { RepositoryProgramError, type RepositoryProgram } from "./program";
 
 export type { RawFindingLocation, RawFindingMessageCode, RawValidatorFinding } from "./findings";
 export { RepositoryProgramError, createRepositoryProgram, type CreateRepositoryProgramOptions, type RepositoryProgram } from "./program";
 
 export function evaluatePolicyChecks(policy: RepositoryPolicy, repository: RepositoryProgram): RawValidatorFinding[] {
+  // Programming-error guard, not a finding: the runner resolves layers after the digest and before this call.
+  if (policy.rules.some((rule) => ruleFileLists(rule.check).some(([, globs]) => globs.some(isLayerReference)))) {
+    throw new RepositoryProgramError("Policy layers must be resolved before evaluation.");
+  }
   const findings: RawValidatorFinding[] = [];
 
   for (const rule of policy.rules) {
@@ -92,6 +99,15 @@ function evaluateRule(
     case "restrict-property-write":
       evaluatePropertyWrites({ ...rule, check: rule.check }, repository, failedPaths, findings);
       return;
+    case "require-call-argument":
+      evaluateCallArguments({ ...rule, check: rule.check }, repository, failedPaths, findings);
+      return;
+    case "restrict-state-transition":
+      evaluateStateTransitions({ ...rule, check: rule.check }, repository, failedPaths, findings);
+      return;
+    case "require-ingress-parse":
+      evaluateIngressParses({ ...rule, check: rule.check }, repository, failedPaths, findings);
+      return;
   }
 }
 
@@ -100,6 +116,7 @@ function ruleClaimsPath(check: PolicyCheck, filePath: string): boolean {
     case "forbid-import-edge":
       return check.from.some((glob) => matchesGlob(filePath, glob));
     case "restrict-call-site":
+    case "restrict-state-transition":
       return true;
     case "require-context-parameter":
       return (check.expectedType?.kind === "export" && check.expectedType.file === filePath)
@@ -109,6 +126,8 @@ function ruleClaimsPath(check: PolicyCheck, filePath: string): boolean {
     case "require-tenant-parameter":
     case "require-boundary-parse":
     case "require-governed-operation":
+    case "require-call-argument":
+    case "require-ingress-parse":
       return check.files.some((glob) => matchesGlob(filePath, glob));
     case "restrict-property-write":
       return check.targetType.file === filePath || check.files.some((glob) => matchesGlob(filePath, glob));

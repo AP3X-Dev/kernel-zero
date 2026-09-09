@@ -22,6 +22,29 @@
       "packages/persistence/src/client.ts"
     ]
   },
+  "layers": {
+    "ui": [
+      "apps/control/src/app/**/page.tsx",
+      "apps/control/src/app/**/layout.tsx"
+    ],
+    "transport": [
+      "apps/control/src/app/api/**/*.ts"
+    ],
+    "service": [
+      "apps/control/src/server/**/*.ts"
+    ],
+    "persistence": [
+      "packages/persistence/src/**/*.ts"
+    ],
+    "kernel": [
+      "packages/domain/**/*.ts",
+      "packages/contracts/**/*.ts",
+      "packages/persistence/**/*.ts"
+    ],
+    "validator": [
+      "packages/validator/**/*.ts"
+    ]
+  },
   "rules": [
     {
       "id": "server-modules-declare-boundary",
@@ -30,8 +53,8 @@
       "check": {
         "kind": "require-import",
         "files": [
-          "apps/control/src/server/**/*.ts",
-          "packages/persistence/src/**/*.ts"
+          "layer:service",
+          "layer:persistence"
         ],
         "module": "server-only",
         "allowTypeOnly": false
@@ -45,8 +68,7 @@
       "check": {
         "kind": "forbid-import-edge",
         "from": [
-          "apps/control/src/app/**/page.tsx",
-          "apps/control/src/app/**/layout.tsx"
+          "layer:ui"
         ],
         "deny": [
           "module:@kernel-zero/persistence",
@@ -62,7 +84,7 @@
       "check": {
         "kind": "forbid-import-edge",
         "from": [
-          "apps/control/src/app/api/**/*.ts"
+          "layer:transport"
         ],
         "deny": [
           "module:@kernel-zero/persistence",
@@ -150,9 +172,7 @@
       "check": {
         "kind": "forbid-import-edge",
         "from": [
-          "packages/domain/**/*.ts",
-          "packages/contracts/**/*.ts",
-          "packages/persistence/**/*.ts"
+          "layer:kernel"
         ],
         "deny": [
           "module:@kernel-zero/profiles",
@@ -169,7 +189,7 @@
       "check": {
         "kind": "forbid-import-edge",
         "from": [
-          "packages/validator/**/*.ts"
+          "layer:validator"
         ],
         "deny": [
           "module:@kernel-zero/persistence",
@@ -179,6 +199,192 @@
         ]
       },
       "remediation": "Keep the validator on contracts, domain, and its profile."
+    },
+    {
+      "id": "tenant-queries-carry-workspace",
+      "title": "Tenant queries carry the workspace identifier",
+      "level": "error",
+      "check": {
+        "kind": "require-call-argument",
+        "files": [
+          "layer:persistence"
+        ],
+        "callee": [
+          "*.findFirst",
+          "*.findMany",
+          "*.updateMany",
+          "*.deleteMany",
+          "*.count"
+        ],
+        "argument": 0,
+        "requiredPath": "where.workspaceId",
+        "allowFrom": [
+          "packages/persistence/src/audit.ts"
+        ]
+      },
+      "remediation": "Put workspaceId in the where selector of every tenant-scoped query so a sibling tenant's rows are never reachable."
+    },
+    {
+      "id": "policy-revision-state-is-governed",
+      "title": "Policy revision state changes only through the governed lifecycle",
+      "level": "error",
+      "check": {
+        "kind": "restrict-state-transition",
+        "callee": [
+          "*.policyRevision.updateMany"
+        ],
+        "argument": 0,
+        "field": "data.state",
+        "allowFrom": [
+          "packages/persistence/src/policies.ts"
+        ],
+        "transitions": [
+          {
+            "from": "draft",
+            "to": "approved"
+          },
+          {
+            "from": "approved",
+            "to": "active"
+          },
+          {
+            "from": "active",
+            "to": "superseded"
+          }
+        ]
+      },
+      "remediation": "Change a policy revision's state only from policies.ts, with a literal where.state predicate, through draft->approved, approved->active, or active->superseded."
+    },
+    {
+      "id": "route-handlers-parse-their-input-get",
+      "title": "GET route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "GET",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "route-handlers-parse-their-input-post",
+      "title": "POST route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "POST",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "route-handlers-parse-their-input-put",
+      "title": "PUT route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "PUT",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "route-handlers-parse-their-input-patch",
+      "title": "PATCH route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "PATCH",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "route-handlers-parse-their-input-delete",
+      "title": "DELETE route handlers parse their input before it escapes",
+      "level": "error",
+      "check": {
+        "kind": "require-ingress-parse",
+        "files": [
+          "layer:transport"
+        ],
+        "symbols": "DELETE",
+        "parserCalls": [
+          "readEvidenceRequest"
+        ],
+        "readerCalls": [
+          "dependencies.resolveSubmission"
+        ],
+        "allowedCalls": [
+          "dependencies.service.submit",
+          "errorResponse"
+        ]
+      },
+      "remediation": "Pass the request only to the request-context reader and readEvidenceRequest; hand parsed values to one application service and build every response through errorResponse or Response.json."
+    },
+    {
+      "id": "runtime-opens-at-the-boundary",
+      "title": "The runtime is opened only where a request enters",
+      "level": "error",
+      "check": {
+        "kind": "restrict-call-site",
+        "callee": [
+          "getRuntime"
+        ],
+        "allowFrom": [
+          "layer:transport",
+          "apps/control/src/app/app/route-context.ts"
+        ]
+      },
+      "remediation": "Receive the runtime (or its prisma client and config) as a parameter from the route or page context instead of opening it inside a service or view."
     }
   ]
 }

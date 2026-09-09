@@ -35,6 +35,119 @@ protected operation. The JSON evidence at `--out` is authoritative; the command
 also prints one summary line and one deterministic line per finding (level,
 rule, path:line:column, code, subject) followed by the policy remediation.
 
+## Layers
+
+A policy may name architectural layers once and reference them from rule
+file lists with `layer:<name>`; `scope` stays glob-only. The validator expands
+each reference before evaluation, and the policy digest covers the document
+as written, so a policy without `layers` keeps its digest.
+
+```json
+{
+  "layers": {
+    "ui": ["src/app/**/page.tsx", "src/app/**/layout.tsx"],
+    "persistence": ["src/persistence/**/*.ts"]
+  },
+  "rules": [{
+    "id": "ui-does-not-import-persistence",
+    "title": "UI routes use application services",
+    "level": "error",
+    "check": { "kind": "forbid-import-edge", "from": ["layer:ui"], "deny": ["module:@prisma/client"] },
+    "remediation": "Move persistence access behind a server application service."
+  }]
+}
+```
+
+A reference to an undeclared layer, a non-slug name, or a reference inside
+`scope` fails policy parsing with exit `2`.
+
+## Required call arguments
+
+`require-call-argument` proves that every call whose resolved callee matches
+a glob carries a dotted path in one argument, so a tenant identifier cannot be
+dropped from a query selector. Proof is static: an object literal, an
+`Object.freeze` of one, or a same-file `const` bound to one, with no opaque
+spread or computed key on the path. Anything the validator cannot prove is
+`CALL_ARGUMENT_PROOF_FAILED`; a provable selector without the path is
+`CALL_ARGUMENT_MISSING`.
+
+```json
+{
+  "id": "tenant-queries-carry-workspace",
+  "title": "Tenant queries carry the workspace identifier",
+  "level": "error",
+  "check": {
+    "kind": "require-call-argument",
+    "files": ["layer:persistence"],
+    "callee": ["*.findFirst", "*.findMany", "*.updateMany", "*.deleteMany", "*.count"],
+    "requiredPath": "where.workspaceId",
+    "allowFrom": ["src/persistence/audit.ts"]
+  },
+  "remediation": "Put workspaceId in the where selector of every tenant-scoped query."
+}
+```
+
+## Governed state transitions
+
+`restrict-state-transition` proves that a state field is written only from
+its allowed writer files and, when `transitions` are listed, only through a
+listed `from -> to` pair, read from the literal `where` predicate and the
+literal written value. A write outside `allowFrom` or through an unlisted
+pair is `STATE_TRANSITION_DENIED`; a write the validator cannot prove (a
+spread, a value built elsewhere, a predicate without the field) is
+`STATE_TRANSITION_PROOF_FAILED`. Calls that do not write the field are
+ignored.
+
+```json
+{
+  "id": "policy-revision-state-is-governed",
+  "title": "Policy revision state changes only through the governed lifecycle",
+  "level": "error",
+  "check": {
+    "kind": "restrict-state-transition",
+    "callee": ["*.policyRevision.updateMany"],
+    "field": "data.state",
+    "allowFrom": ["src/persistence/policies.ts"],
+    "transitions": [
+      { "from": "draft", "to": "approved" },
+      { "from": "approved", "to": "active" },
+      { "from": "active", "to": "superseded" }
+    ]
+  },
+  "remediation": "Change revision state only from policies.ts through a listed transition."
+}
+```
+
+## Parsed ingress
+
+`require-ingress-parse` proves that every exported function matching
+`symbols` passes its input through one of `parserCalls` before that input
+escapes. Parameters are untrusted, and so is everything read from them,
+awaited from them, built around them, or returned by a `readerCalls` call;
+an untrusted value may reach only `parserCalls`, `readerCalls`, and
+`allowedCalls`. A handler that never parses is `INGRESS_PARSE_MISSING`; input
+reaching any other call, a `return`, an outer binding, or a capturing closure
+is `INGRESS_ESCAPE`; a handler the pass cannot follow (built by a factory,
+containing a loop, calling something unresolvable) is `INGRESS_PROOF_FAILED`.
+The glob has no alternation, so declare one rule per exported name.
+
+```json
+{
+  "id": "route-handlers-parse-their-input-post",
+  "title": "POST route handlers parse their input before it escapes",
+  "level": "error",
+  "check": {
+    "kind": "require-ingress-parse",
+    "files": ["layer:transport"],
+    "symbols": "POST",
+    "parserCalls": ["readEvidenceRequest"],
+    "readerCalls": ["dependencies.resolveSubmission"],
+    "allowedCalls": ["dependencies.service.submit", "errorResponse"]
+  },
+  "remediation": "Parse the request before anything else sees it."
+}
+```
+
 ## Explain and init
 
 ```text

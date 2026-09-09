@@ -29,6 +29,24 @@ const policy = {
     level: "error",
     remediation: "Use a repository boundary.",
     title: "No raw database client",
+  }, {
+    check: { callee: ["*.findMany"], files: ["src/**/*.ts"], kind: "require-call-argument", requiredPath: "where.workspaceId" },
+    id: "tenant-queries-carry-workspace",
+    level: "error",
+    remediation: "Add where.workspaceId to the selector.",
+    title: "Tenant queries carry the workspace",
+  }, {
+    check: { allowFrom: ["src/**"], callee: ["*.updateMany"], field: "data.state", kind: "restrict-state-transition", transitions: [{ from: "draft", to: "approved" }] },
+    id: "state-is-governed",
+    level: "error",
+    remediation: "Write state through a listed transition.",
+    title: "State is governed",
+  }, {
+    check: { files: ["src/**/*.ts"], kind: "require-ingress-parse", parserCalls: ["parse"], symbols: "handler*" },
+    id: "handlers-parse-their-input",
+    level: "error",
+    remediation: "Parse the request before it escapes.",
+    title: "Handlers parse their input",
   }],
   scope: { exclude: [], include: ["src/**/*.ts"], languages: ["typescript"] },
 };

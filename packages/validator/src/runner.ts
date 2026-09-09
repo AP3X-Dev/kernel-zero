@@ -17,6 +17,7 @@ import {
   RepositoryEvidenceSchema,
   RepositoryPolicySchema,
   findingMessage,
+  resolvePolicyLayers,
   type FindingMessageCode,
   type RepositoryEvidence,
   type RepositoryPolicy,
@@ -57,7 +58,7 @@ export async function runValidation(command: ResolvedValidateCommand, options: V
     root: command.root,
   });
   const repository = createRepositoryProgram({ rootPath: discovery.root, filePaths: discovery.files.map((file) => file.path) });
-  const rawFindings = evaluatePolicyChecks(policy, repository);
+  const rawFindings = evaluatePolicyChecks(resolvePolicyLayers(policy), repository);
   const grants = new Map((exceptionBundle?.grants ?? []).map((grant) => [`${grant.ruleId}\0${grant.fingerprint}`, grant.exceptionId]));
   const findings = sortFindings(rawFindings.map((finding): EvidenceFinding => {
     const messageCode = publicMessageCode(finding.messageCode);
@@ -210,5 +211,14 @@ function publicMessageCode(code: RawFindingMessageCode): FindingMessageCode {
     case "PROPERTY_WRITE_DENIED": return "PROPERTY_WRITE_DENIED";
     case "PROPERTY_WRITE_UNRESOLVED":
     case "PROPERTY_TARGET_UNRESOLVED": return "PROPERTY_WRITE_PROOF_FAILED";
+    case "CALL_ARGUMENT_MISSING": return "CALL_ARGUMENT_MISSING";
+    case "CALL_ARGUMENT_UNPROVABLE":
+    case "CALL_ARGUMENT_UNRESOLVED": return "CALL_ARGUMENT_PROOF_FAILED";
+    case "STATE_TRANSITION_DENIED_WRITER":
+    case "STATE_TRANSITION_DENIED_PAIR": return "STATE_TRANSITION_DENIED";
+    case "STATE_TRANSITION_UNPROVABLE": return "STATE_TRANSITION_PROOF_FAILED";
+    case "INGRESS_PARSE_MISSING": return "INGRESS_PARSE_MISSING";
+    case "INGRESS_ESCAPE": return "INGRESS_ESCAPE";
+    case "INGRESS_UNRESOLVED": return "INGRESS_PROOF_FAILED";
   }
 }

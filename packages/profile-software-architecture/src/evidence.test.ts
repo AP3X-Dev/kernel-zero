@@ -86,6 +86,58 @@ describe("repository evidence contract", () => {
     expect(RepositoryEvidenceSchema.safeParse({ ...original, findings: [{ ...originalFinding, message: "arbitrary" }] }).success).toBe(false);
   });
 
+  it("publishes the call-argument codes with their exact messages and accepts them in findings", () => {
+    expect(findingMessage("CALL_ARGUMENT_MISSING")).toBe("A call to a governed operation omits a required argument field.");
+    expect(findingMessage("CALL_ARGUMENT_PROOF_FAILED")).toBe("A call to a governed operation could not be proven to carry a required argument field.");
+    const original = validEvidence();
+    const finding = onlyFinding(original);
+    for (const messageCode of ["CALL_ARGUMENT_MISSING", "CALL_ARGUMENT_PROOF_FAILED"] as const) {
+      const subject = "call:tx.policyRevision.findFirst:argument:0:where.workspaceId";
+      const identity = findingIdentity({ location, messageCode, path: finding.path, policyDigest: original.policy.digest, ruleId: finding.ruleId, subject });
+      const rewritten = { ...finding, ...identity, message: findingMessage(messageCode), messageCode, subject };
+      const base = { ...original, findings: [rewritten] };
+      expect(RepositoryEvidenceSchema.safeParse({ ...base, integrity: { algorithm: "sha256", digest: canonicalEvidenceDigest(base) } }).success).toBe(true);
+    }
+  });
+
+  it("publishes the state-transition codes with their exact messages and accepts both subject forms in findings", () => {
+    expect(findingMessage("STATE_TRANSITION_DENIED")).toBe("A governed state field is written outside its allowed writer or through an unlisted transition.");
+    expect(findingMessage("STATE_TRANSITION_PROOF_FAILED")).toBe("A write to a governed state field could not be proven against the allowed transitions.");
+    const original = validEvidence();
+    const finding = onlyFinding(original);
+    const cases = [
+      ["STATE_TRANSITION_DENIED", "transition:state:tx.policyRevision.updateMany"],
+      ["STATE_TRANSITION_DENIED", "transition:state:draft->active"],
+      ["STATE_TRANSITION_PROOF_FAILED", "transition:state:tx.policyRevision.updateMany"],
+    ] as const;
+    for (const [messageCode, subject] of cases) {
+      const identity = findingIdentity({ location, messageCode, path: finding.path, policyDigest: original.policy.digest, ruleId: finding.ruleId, subject });
+      const rewritten = { ...finding, ...identity, message: findingMessage(messageCode), messageCode, subject };
+      const base = { ...original, findings: [rewritten] };
+      expect(RepositoryEvidenceSchema.safeParse({ ...base, integrity: { algorithm: "sha256", digest: canonicalEvidenceDigest(base) } }).success).toBe(true);
+    }
+  });
+
+  it("publishes the ingress codes with their exact messages and accepts the three subject forms in findings", () => {
+    expect(findingMessage("INGRESS_PARSE_MISSING")).toBe("An ingress function never passes its input through a required parser.");
+    expect(findingMessage("INGRESS_ESCAPE")).toBe("Unparsed ingress input reaches a call, return, or binding outside the allowed set.");
+    expect(findingMessage("INGRESS_PROOF_FAILED")).toBe("Ingress input flow could not be proven within the function.");
+    const original = validEvidence();
+    const finding = onlyFinding(original);
+    const cases = [
+      ["INGRESS_PARSE_MISSING", "symbol:POST:parser"],
+      ["INGRESS_ESCAPE", "symbol:POST:escape:request.json"],
+      ["INGRESS_ESCAPE", "symbol:POST:escape:return"],
+      ["INGRESS_PROOF_FAILED", "symbol:POST:proof"],
+    ] as const;
+    for (const [messageCode, subject] of cases) {
+      const identity = findingIdentity({ location, messageCode, path: finding.path, policyDigest: original.policy.digest, ruleId: finding.ruleId, subject });
+      const rewritten = { ...finding, ...identity, message: findingMessage(messageCode), messageCode, subject };
+      const base = { ...original, findings: [rewritten] };
+      expect(RepositoryEvidenceSchema.safeParse({ ...base, integrity: { algorithm: "sha256", digest: canonicalEvidenceDigest(base) } }).success).toBe(true);
+    }
+  });
+
   it("excludes run metadata and diagnostic duration from integrity", () => {
     const original = validEvidence();
     expect(canonicalEvidenceDigest({ ...original, runId: "0195f000-0000-7000-8000-000000000099" })).toBe(original.integrity.digest);

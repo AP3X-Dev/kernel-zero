@@ -17,6 +17,116 @@ without touching the output. Production export requires an authenticated
 control-plane channel and approved signing-key custody; neither is inferred by
 the standalone validator.
 
+## Named layers
+
+`kernel-zero.policy.json` declares its architectural layers once under
+`layers` and references them from rule file lists (`from`, `files`,
+`allowFrom`, `declarationFiles`) as `layer:<name>`. `scope.include` and
+`scope.exclude` accept globs only. The repository self-policy uses six layers:
+
+```json
+"layers": {
+  "ui": ["apps/control/src/app/**/page.tsx", "apps/control/src/app/**/layout.tsx"],
+  "transport": ["apps/control/src/app/api/**/*.ts"],
+  "service": ["apps/control/src/server/**/*.ts"],
+  "persistence": ["packages/persistence/src/**/*.ts"],
+  "kernel": ["packages/domain/**/*.ts", "packages/contracts/**/*.ts", "packages/persistence/**/*.ts"],
+  "validator": ["packages/validator/**/*.ts"]
+}
+```
+
+and `transport-does-not-import-repositories` reads
+`"from": ["layer:transport"]`. References are expanded after the policy digest
+is computed and before evaluation, so subjects, fingerprints, and the digest
+of a layer-free policy are unchanged. An undeclared or malformed reference, or
+one placed in `scope`, is a policy contract failure (exit `2`).
+
+## Required call arguments
+
+The self-policy rule `tenant-queries-carry-workspace` uses
+`require-call-argument` to prove that every `*.findFirst`, `*.findMany`,
+`*.updateMany`, `*.deleteMany`, and `*.count` call in `layer:persistence`
+carries `where.workspaceId` in its first argument; `audit.ts` is the only
+`allowFrom` file because audit rows are keyed by `workspaceOpaqueId`.
+
+```json
+"check": {
+  "kind": "require-call-argument",
+  "files": ["layer:persistence"],
+  "callee": ["*.findFirst", "*.findMany", "*.updateMany", "*.deleteMany", "*.count"],
+  "argument": 0,
+  "requiredPath": "where.workspaceId",
+  "allowFrom": ["packages/persistence/src/audit.ts"]
+}
+```
+
+Deleting one `workspaceId` from a selector fails the gate with
+`CALL_ARGUMENT_MISSING` at the call; a selector the validator cannot prove
+(an opaque spread, a value built elsewhere, a receiver typed `any`) fails with
+`CALL_ARGUMENT_PROOF_FAILED`. `findUnique` is not listed: compound-unique
+selectors carry the tenant key inside the unique-key object, which the
+composite index already scopes.
+
+## Governed state transitions
+
+The self-policy rule `policy-revision-state-is-governed` uses
+`restrict-state-transition` to prove that `*.policyRevision.updateMany`
+writes `data.state` only from `packages/persistence/src/policies.ts`, and
+only as `draft->approved`, `approved->active`, or `active->superseded`, read
+from the literal `where.state` predicate and the literal `data.state` value.
+
+```json
+"check": {
+  "kind": "restrict-state-transition",
+  "callee": ["*.policyRevision.updateMany"],
+  "argument": 0,
+  "field": "data.state",
+  "allowFrom": ["packages/persistence/src/policies.ts"],
+  "transitions": [
+    { "from": "draft", "to": "approved" },
+    { "from": "approved", "to": "active" },
+    { "from": "active", "to": "superseded" }
+  ]
+}
+```
+
+A state write anywhere else fails the gate with `STATE_TRANSITION_DENIED`
+and the callee chain as subject; a write in `policies.ts` through an
+unlisted pair fails with the same code and subject `transition:state:<from>-><to>`;
+a write whose `where` carries no literal `state`, or whose `data` is a spread,
+fails with `STATE_TRANSITION_PROOF_FAILED`. Writes that touch other columns
+are ignored.
+
+## Parsed ingress
+
+The five self-policy rules `route-handlers-parse-their-input-{get,post,put,patch,delete}`
+use `require-ingress-parse` to prove that every exported HTTP verb handler in
+`layer:transport` passes its request through `readEvidenceRequest` before the
+request, anything read from it, or the result of
+`dependencies.resolveSubmission` reaches anything other than
+`dependencies.service.submit` or `errorResponse`. One rule per verb because
+the symbol glob has no alternation.
+
+```json
+"check": {
+  "kind": "require-ingress-parse",
+  "files": ["layer:transport"],
+  "symbols": "POST",
+  "parserCalls": ["readEvidenceRequest"],
+  "readerCalls": ["dependencies.resolveSubmission"],
+  "allowedCalls": ["dependencies.service.submit", "errorResponse"]
+}
+```
+
+Replacing `readEvidenceRequest(request)` with `request.json()` fails the gate
+with `INGRESS_ESCAPE` and subject `symbol:POST:escape:request.json`; a handler
+that never parses fails with `INGRESS_PARSE_MISSING`; a handler built by a
+factory (`export const POST = createHandler(...)`), one containing a loop, or
+one calling something the validator cannot resolve fails with
+`INGRESS_PROOF_FAILED`. The route's production wiring therefore sits behind a
+no-argument `evidenceDependencies()` accessor so the exported `POST` is
+provable on its own.
+
 ## Agent-facing commands
 
 `kernel-zero explain --policy|--evidence <file>` renders one strictly parsed

@@ -1,21 +1,26 @@
 import type { EvidenceFinding } from "@kernel-zero/contracts";
 
-import type { RepositoryPolicy } from "./policy";
+import { resolvePolicyLayers } from "./layers";
+import { CalleeGlobSchema, IdentifierSchema, type RepositoryPolicy } from "./policy";
 
 const messageCodesByKind: Readonly<Record<RepositoryPolicy["rules"][number]["check"]["kind"], readonly string[]>> = Object.freeze({
   "forbid-import-edge": ["DENIED_IMPORT"],
   "require-boundary-parse": ["BOUNDARY_PARSE_REQUIRED"],
+  "require-call-argument": ["CALL_ARGUMENT_MISSING", "CALL_ARGUMENT_PROOF_FAILED"],
   "require-closed-registry": ["CLOSED_REGISTRY_ENTRY_INVALID", "UNREGISTERED_DECLARATION", "CLOSED_REGISTRY_PROOF_FAILED"],
   "require-context-parameter": ["CONTEXT_PARAMETER_INVALID", "CONTEXT_PARAMETER_PROOF_FAILED"],
   "require-export-keys": ["REQUIRED_EXPORT_KEY_MISSING"],
   "require-governed-operation": ["GOVERNED_OPERATION_INVALID"],
   "require-import": ["REQUIRED_IMPORT_MISSING"],
+  "require-ingress-parse": ["INGRESS_PARSE_MISSING", "INGRESS_ESCAPE", "INGRESS_PROOF_FAILED"],
   "require-tenant-parameter": ["TENANT_PARAMETER_MISSING"],
   "restrict-call-site": ["RESTRICTED_CALL"],
   "restrict-property-write": ["PROPERTY_WRITE_DENIED", "PROPERTY_WRITE_PROOF_FAILED"],
+  "restrict-state-transition": ["STATE_TRANSITION_DENIED", "STATE_TRANSITION_PROOF_FAILED"],
 });
 
-export function findingCompatibilityReason(policy: RepositoryPolicy, finding: EvidenceFinding): string | null {
+export function findingCompatibilityReason(unresolvedPolicy: RepositoryPolicy, finding: EvidenceFinding): string | null {
+  const policy = resolvePolicyLayers(unresolvedPolicy);
   const rule = policy.rules.find((candidate) => candidate.id === finding.ruleId);
   if (rule === undefined) return "rule_not_found";
   if (finding.level !== rule.level) return "rule_level_mismatch";
@@ -73,6 +78,50 @@ export function findingCompatibilityReason(policy: RepositoryPolicy, finding: Ev
         && (globMatches(qualifiedName, [check.symbols]) || globMatches(symbolName, [check.symbols]))
         ? null
         : "rule_subject_mismatch";
+    }
+    case "require-call-argument": {
+      const check = rule.check;
+      const body = stripPrefix(finding.subject, "call:");
+      const suffix = `:argument:${String(check.argument)}:${check.requiredPath}`;
+      if (!body?.endsWith(suffix)) return "rule_subject_mismatch";
+      // The unresolved case reports the glob itself, so a chain may carry `*` segments.
+      const chain = body.slice(0, -suffix.length);
+      return CalleeGlobSchema.safeParse(chain).success && globMatches(chain, check.callee) ? null : "rule_subject_mismatch";
+    }
+    case "restrict-state-transition": {
+      const check = rule.check;
+      const body = stripPrefix(finding.subject, `transition:${check.field.split(".").at(-1) ?? check.field}:`);
+      if (body === null) return "rule_subject_mismatch";
+      // Chain form for both codes; the pair form only reports a denied transition. A chain segment cannot contain `-`, so the forms never collide.
+      if (CalleeGlobSchema.safeParse(body).success && globMatches(body, check.callee)) return null;
+      if (finding.messageCode !== "STATE_TRANSITION_DENIED") return "rule_subject_mismatch";
+      const [from, to, ...rest] = body.split("->");
+      return rest.length === 0 && from !== undefined && to !== undefined
+        && (from === "*" || IdentifierSchema.safeParse(from).success) && IdentifierSchema.safeParse(to).success
+        ? null
+        : "rule_subject_mismatch";
+    }
+    case "require-ingress-parse": {
+      const check = rule.check;
+      const body = stripPrefix(finding.subject, "symbol:");
+      // The qualified name never contains ":", so the first ":" ends it; each code owns exactly one suffix form.
+      const separator = body?.indexOf(":") ?? -1;
+      if (body === null || separator < 1) return "rule_subject_mismatch";
+      const qualifiedName = body.slice(0, separator);
+      const suffix = body.slice(separator + 1);
+      const symbolName = qualifiedName.split(".").at(-1) ?? qualifiedName;
+      if (!isQualifiedName(qualifiedName) || !(globMatches(qualifiedName, [check.symbols]) || globMatches(symbolName, [check.symbols]))) {
+        return "rule_subject_mismatch";
+      }
+      switch (finding.messageCode) {
+        case "INGRESS_PARSE_MISSING": return suffix === "parser" ? null : "rule_subject_mismatch";
+        case "INGRESS_PROOF_FAILED": return suffix === "proof" ? null : "rule_subject_mismatch";
+        default: {
+          const target = stripPrefix(suffix, "escape:");
+          // `return` and `closure` are identifier chains themselves, so one grammar covers every escape target.
+          return target !== null && isIdentifierChain(target) ? null : "rule_subject_mismatch";
+        }
+      }
     }
   }
 }

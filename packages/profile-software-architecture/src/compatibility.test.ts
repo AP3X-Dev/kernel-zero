@@ -9,6 +9,12 @@ const REG = { declarationCalls: ["defineTool"], declarationFiles: ["src/tools/**
 
 const PW = { allowFrom: ["src/dataplane/state/**"], files: ["src/**/*.ts"], kind: "restrict-property-write", property: "status", targetType: { exportName: "Job", file: "src/domain/job.ts" } };
 
+const CA = { allowFrom: ["src/audit.ts"], argument: 0, callee: ["*.findFirst", "db.policy.*"], files: ["src/**/*.ts"], kind: "require-call-argument", requiredPath: "where.workspaceId" };
+
+const ST = { allowFrom: ["src/persistence/policies.ts"], argument: 0, callee: ["*.policyRevision.updateMany"], field: "data.state", kind: "restrict-state-transition", transitions: [{ from: "draft", to: "approved" }] };
+
+const ING = { allowedCalls: ["dependencies.service.submit", "errorResponse"], files: ["src/api/**/*.ts"], kind: "require-ingress-parse", parserCalls: ["readEvidenceRequest"], readerCalls: ["dependencies.resolveSubmission"], symbols: "POST" };
+
 const checkCases: readonly Readonly<{
   check: Record<string, unknown>;
   code: FindingMessageCode;
@@ -31,6 +37,21 @@ const checkCases: readonly Readonly<{
   { check: REG, code: "CLOSED_REGISTRY_PROOF_FAILED", subject: "registry:TOOL_POLICY:proof:search" },
   { check: PW, code: "PROPERTY_WRITE_DENIED", subject: "property:src/domain/job.ts#Job.status" },
   { check: PW, code: "PROPERTY_WRITE_PROOF_FAILED", subject: "property:src/domain/job.ts#Job.status" },
+  { check: CA, code: "CALL_ARGUMENT_MISSING", subject: "call:tx.policyRevision.findFirst:argument:0:where.workspaceId" },
+  { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:db.policy.findMany:argument:0:where.workspaceId" },
+  { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:db.policy.*:argument:0:where.workspaceId" },
+  { check: CA, code: "CALL_ARGUMENT_PROOF_FAILED", subject: "call:*.findFirst:argument:0:where.workspaceId" },
+  { check: ST, code: "STATE_TRANSITION_DENIED", subject: "transition:state:tx.policyRevision.updateMany" },
+  { check: ST, code: "STATE_TRANSITION_DENIED", subject: "transition:state:draft->active" },
+  { check: ST, code: "STATE_TRANSITION_DENIED", subject: "transition:state:*->active" },
+  { check: ST, code: "STATE_TRANSITION_PROOF_FAILED", subject: "transition:state:tx.policyRevision.updateMany" },
+  { check: ST, code: "STATE_TRANSITION_PROOF_FAILED", subject: "transition:state:*.policyRevision.updateMany" },
+  { check: ING, code: "INGRESS_PARSE_MISSING", subject: "symbol:POST:parser" },
+  { check: ING, code: "INGRESS_ESCAPE", subject: "symbol:POST:escape:request.json" },
+  { check: ING, code: "INGRESS_ESCAPE", subject: "symbol:POST:escape:return" },
+  { check: ING, code: "INGRESS_ESCAPE", subject: "symbol:POST:escape:closure" },
+  { check: ING, code: "INGRESS_ESCAPE", subject: "symbol:handlers.POST:escape:sink" },
+  { check: ING, code: "INGRESS_PROOF_FAILED", subject: "symbol:POST:proof" },
 ];
 
 function policy(check: Record<string, unknown>) {
@@ -96,6 +117,65 @@ describe("evidence rule compatibility", () => {
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_DENIED", "property:src/domain/job.ts#Job.retries"))).toBe("rule_subject_mismatch");
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_DENIED", "property:src/domain/task.ts#Job.status"))).toBe("rule_subject_mismatch");
     expect(findingCompatibilityReason(policy(PW), finding("PROPERTY_WRITE_PROOF_FAILED", "property:src/domain/job.ts#Task.status"))).toBe("rule_subject_mismatch");
+  });
+
+  it("rejects ingress subjects with another symbol, a suffix owned by another code, or a malformed escape target", () => {
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_PARSE_MISSING", "symbol:GET:parser"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_PARSE_MISSING", "symbol:POST:proof"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_PROOF_FAILED", "symbol:POST:parser"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol:POST:parser"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol:POST:escape:"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol:POST:escape:request..json"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol:POST:escape:a/b"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_ESCAPE", "symbol::escape:return"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("INGRESS_PROOF_FAILED", "symbol:POST"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ING), finding("BOUNDARY_PARSE_REQUIRED", "symbol:POST:save"))).toBe("rule_code_mismatch");
+    expect(findingCompatibilityReason(policy({ ...ING, symbols: "P*" }), finding("INGRESS_PROOF_FAILED", "symbol:PUT:proof"))).toBeNull();
+  });
+
+  it("rejects call-argument subjects with another index, path, or a chain outside the callee globs", () => {
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:1:where.workspaceId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:0:where.tenantId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_MISSING", "call:db.other.findMany:argument:0:where.workspaceId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_PROOF_FAILED", "call:db.policy.findMany/x:argument:0:where.workspaceId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_PROOF_FAILED", "call::argument:0:where.workspaceId"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("RESTRICTED_CALL", "db.policy.findMany"))).toBe("rule_code_mismatch");
+    expect(findingCompatibilityReason(policy(CA), finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:0:where.workspaceId"))).toBeNull();
+    const layered = RepositoryPolicySchema.parse({
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "RepositoryPolicy",
+      layers: { persistence: ["src/persistence/**/*.ts"] },
+      metadata: { description: "Policy", name: "policy", revision: 1 },
+      rules: [{ check: { ...CA, allowFrom: [], files: ["layer:persistence"] }, id: "test-rule", level: "error", remediation: "Fix it.", title: "Test" }],
+      scope: { exclude: [], include: ["**/*.ts"], languages: ["typescript"] },
+    });
+    expect(findingCompatibilityReason(layered, finding("CALL_ARGUMENT_MISSING", "call:db.policy.findMany:argument:0:where.workspaceId"))).toBeNull();
+  });
+
+  it("rejects state-transition subjects with another leaf, a chain outside the callee globs, a malformed pair, or a pair on a proof failure", () => {
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:status:tx.policyRevision.updateMany"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:tx.policyPack.updateMany"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:draft->"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:draft->a->b"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:draft->*"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_DENIED", "transition:state:in progress->done"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("STATE_TRANSITION_PROOF_FAILED", "transition:state:draft->active"))).toBe("rule_subject_mismatch");
+    expect(findingCompatibilityReason(policy(ST), finding("CALL_ARGUMENT_MISSING", "transition:state:draft->active"))).toBe("rule_code_mismatch");
+    expect(findingCompatibilityReason(policy({ ...ST, field: "state" }), finding("STATE_TRANSITION_DENIED", "transition:state:draft->active"))).toBeNull();
+  });
+
+  it("resolves layer references before matching so a layered rule accepts its finding", () => {
+    const layered = RepositoryPolicySchema.parse({
+      apiVersion: "kernel-zero.dev/v1",
+      kind: "RepositoryPolicy",
+      layers: { source: ["src/**/*.ts"] },
+      metadata: { description: "Policy", name: "policy", revision: 1 },
+      rules: [{ check: { deny: ["module:blocked-package"], from: ["layer:source"], kind: "forbid-import-edge" }, id: "test-rule", level: "error", remediation: "Fix it.", title: "Test" }],
+      scope: { exclude: [], include: ["**/*.ts"], languages: ["typescript"] },
+    });
+    expect(findingCompatibilityReason(layered, finding("DENIED_IMPORT", "blocked-package"))).toBeNull();
+    expect(findingCompatibilityReason(layered, finding("DENIED_IMPORT", "other-package"))).toBe("rule_subject_mismatch");
+    expect(layered.rules[0]?.check).toMatchObject({ from: ["layer:source"] });
   });
 
   it("allows parse failures only for error-level resolved rules", () => {
